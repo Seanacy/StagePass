@@ -116,7 +116,7 @@ function Navbar({ user, page, setPage, onLogout, role }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => setPage('landing')}>
-        Stage<span>Pass</span>
+        Stage<span className="green">Pass</span>
       </div>
       <div className="navbar-links">
         <a href="#" onClick={(e) => { e.preventDefault(); setPage('clubs'); }}>Clubs</a>
@@ -139,93 +139,102 @@ function Navbar({ user, page, setPage, onLogout, role }) {
 
 // ─── Landing Page ───
 function Landing({ setPage }) {
+  const uniqueStates = [...new Set(SEED_CLUBS.map(c => c.state))].length;
+
   return (
     <div>
-      <div className="hero">
-        <h1>
-          Build Your <span className="gradient">Tour</span>.<br />
-          Own Your <span className="gradient">Stage</span>.
-        </h1>
-        <p>The first platform for dancers to plan tours across clubs nationwide — and for clubs to discover and book top talent.</p>
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary btn-lg" onClick={() => setPage('signup')}>I'm a Dancer</button>
-          <button className="btn btn-accent btn-lg" onClick={() => setPage('login')}>I'm a Club</button>
-        </div>
-      </div>
+      {/* Split Hero */}
+      <div className="split-hero">
+        {/* Left — Tour Builder */}
+        <div className="split-side split-left">
+          <div className="split-label" style={{ color: 'var(--primary)' }}>TOUR BUILDER</div>
+          <h1 className="split-title">
+            Build Your<br /><span style={{ color: 'var(--primary)' }}>Next Tour</span>
+          </h1>
+          <p className="split-subtitle">Browse clubs. Pick dates. Get confirmed.</p>
 
-      {/* How It Works */}
-      <div className="section">
-        <div className="section-header">
-          <h2>How StagePass Works</h2>
-          <p>Three steps to your next tour.</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-          {[
-            { icon: '🔍', title: 'Browse Clubs', desc: 'Search strip clubs by state, city, or name. See contact info, club type, and size — all in one place.' },
-            { icon: '🗓️', title: 'Build Your Tour', desc: 'Pick the clubs you want to dance at. Choose your dates. Submit booking requests directly to each club.' },
-            { icon: '✅', title: 'Get Confirmed', desc: 'Clubs review your request and confirm your dates. Track every stop on your tour from one dashboard.' },
-          ].map((step, i) => (
-            <div key={i} className="card" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>{step.icon}</div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>{step.title}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{step.desc}</p>
+          {/* Mini tour preview */}
+          <div className="tour-preview">
+            <div className="tour-preview-header">SAMPLE TOUR</div>
+            {[
+              { num: 1, name: "Tootsie's Cabaret", meta: 'Miami, FL — Jun 14', status: 'confirmed' },
+              { num: 2, name: 'Magic City', meta: 'Atlanta, GA — Jun 18', status: 'pending' },
+              { num: 3, name: 'King of Diamonds', meta: 'Miami, FL — Jun 22', status: 'pending' },
+            ].map((stop, i) => (
+              <div key={i} className="tour-preview-stop">
+                <div className="tour-preview-num">{stop.num}</div>
+                <div>
+                  <div className="tour-preview-name">{stop.name}</div>
+                  <div className="tour-preview-meta">{stop.meta}</div>
+                </div>
+                <span className={`tour-preview-badge status-${stop.status}`}>{stop.status === 'confirmed' ? 'Confirmed' : 'Pending'}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="split-stat-row">
+            <div className="split-stat">
+              <div className="split-stat-num" style={{ color: 'var(--primary)' }}>{SEED_CLUBS.length}+</div>
+              <div className="split-stat-label">Clubs</div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '3rem 2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '4rem', flexWrap: 'wrap', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)' }}>{SEED_CLUBS.length}+</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Clubs Listed</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)' }}>{[...new Set(SEED_CLUBS.map(c => c.state))].length}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>States Covered</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary-light)' }}>Free</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>For Dancers</div>
-          </div>
-        </div>
-      </div>
-
-      {/* For Dancers / For Clubs */}
-      <div className="section">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          <div className="card" style={{ borderColor: 'var(--primary)', borderWidth: '2px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💃</div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--primary-light)' }}>For Dancers</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              <div>✓ Browse every club in the country</div>
-              <div>✓ Build a multi-city tour in minutes</div>
-              <div>✓ Send booking requests to clubs directly</div>
-              <div>✓ Track confirmations in your dashboard</div>
-              <div>✓ Showcase your profile and social links</div>
-              <div>✓ 100% free to use</div>
+            <div className="split-stat">
+              <div className="split-stat-num" style={{ color: 'var(--primary-light)' }}>{uniqueStates}</div>
+              <div className="split-stat-label">States</div>
             </div>
-            <button className="btn btn-primary" style={{ marginTop: '1.25rem', width: '100%' }} onClick={() => setPage('signup')}>Sign Up as Dancer</button>
-          </div>
-          <div className="card" style={{ borderColor: 'var(--accent)', borderWidth: '2px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🏢</div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--accent)' }}>For Clubs</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              <div>✓ Pre-made account — just log in</div>
-              <div>✓ Review dancer booking requests</div>
-              <div>✓ Accept or decline with one click</div>
-              <div>✓ See dancer profiles and portfolios</div>
-              <div>✓ Manage your upcoming lineup</div>
-              <div>✓ Get discovered by touring dancers</div>
+            <div className="split-stat">
+              <div className="split-stat-num" style={{ color: 'var(--primary)' }}>Free</div>
+              <div className="split-stat-label">For Dancers</div>
             </div>
-            <button className="btn btn-accent" style={{ marginTop: '1.25rem', width: '100%' }} onClick={() => setPage('login')}>Club Log In</button>
           </div>
+
+          <button className="btn btn-primary btn-lg" onClick={() => setPage('signup')}>Start Planning Your Tour</button>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.75rem' }}>Sign up free — browse all clubs instantly</p>
+        </div>
+
+        {/* Center Divider Line */}
+        <div className="split-divider" />
+
+        {/* Right — Dancer Showcase */}
+        <div className="split-side split-right">
+          <div className="split-label" style={{ color: 'var(--accent)' }}>DANCER SHOWCASE</div>
+          <h1 className="split-title">
+            Where The Money<br /><span style={{ color: 'var(--accent)' }}>Looks First</span>
+          </h1>
+          <p className="split-subtitle">Your profile. Your links. Your spotlight.</p>
+
+          {/* Mini dancer cards */}
+          <div className="dancer-preview-row">
+            {[
+              { name: 'Diamond', city: 'Miami, FL', emoji: '💃', tags: ['IG', 'Linktree'] },
+              { name: 'Sapphire', city: 'Atlanta, GA', emoji: '✨', tags: ['IG', 'OnlyFans'] },
+            ].map((d, i) => (
+              <div key={i} className="dancer-preview-card">
+                <div className="dancer-preview-avatar">{d.emoji}</div>
+                <div className="dancer-preview-info">
+                  <div className="dancer-preview-name">{d.name}</div>
+                  <div className="dancer-preview-loc">{d.city}</div>
+                  <div className="dancer-preview-tags">
+                    {d.tags.map((t, j) => <span key={j} className="dancer-preview-tag">{t}</span>)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="split-features">
+            <div>🔗 Social links in one place</div>
+            <div>📍 Searchable by state & city</div>
+            <div>⭐ Featured profiles for top dancers</div>
+          </div>
+
+          <button className="btn btn-accent btn-lg" onClick={() => setPage('signup')}>Create Your Profile</button>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.75rem' }}>Free to join — start getting noticed</p>
         </div>
       </div>
 
+      {/* Footer */}
       <footer className="footer">
-        <p>StagePass — Tour. Perform. Get Discovered.</p>
+        <p><span style={{ color: 'var(--accent)', fontWeight: 700 }}>Stage</span><span style={{ color: 'var(--success)', fontWeight: 700 }}>Pass</span> — Tour. Perform. Get Discovered.</p>
       </footer>
     </div>
   );

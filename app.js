@@ -82,7 +82,7 @@ function Navbar({ user, page, setPage, onLogout, role }) {
   return /* @__PURE__ */ jsxs("nav", { className: "navbar", children: [
     /* @__PURE__ */ jsxs("div", { className: "navbar-brand", style: { cursor: "pointer" }, onClick: () => setPage("landing"), children: [
       "Stage",
-      /* @__PURE__ */ jsx("span", { children: "Pass" })
+      /* @__PURE__ */ jsx("span", { className: "green", children: "Pass" })
     ] }),
     /* @__PURE__ */ jsxs("div", { className: "navbar-links", children: [
       /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
@@ -107,84 +107,86 @@ function Navbar({ user, page, setPage, onLogout, role }) {
   ] });
 }
 function Landing({ setPage }) {
+  const uniqueStates = [...new Set(SEED_CLUBS.map((c) => c.state))].length;
   return /* @__PURE__ */ jsxs("div", { children: [
-    /* @__PURE__ */ jsxs("div", { className: "hero", children: [
-      /* @__PURE__ */ jsxs("h1", { children: [
-        "Build Your ",
-        /* @__PURE__ */ jsx("span", { className: "gradient", children: "Tour" }),
-        ".",
-        /* @__PURE__ */ jsx("br", {}),
-        "Own Your ",
-        /* @__PURE__ */ jsx("span", { className: "gradient", children: "Stage" }),
-        "."
+    /* @__PURE__ */ jsxs("div", { className: "split-hero", children: [
+      /* @__PURE__ */ jsxs("div", { className: "split-side split-left", children: [
+        /* @__PURE__ */ jsx("div", { className: "split-label", style: { color: "var(--primary)" }, children: "TOUR BUILDER" }),
+        /* @__PURE__ */ jsxs("h1", { className: "split-title", children: [
+          "Build Your",
+          /* @__PURE__ */ jsx("br", {}),
+          /* @__PURE__ */ jsx("span", { style: { color: "var(--primary)" }, children: "Next Tour" })
+        ] }),
+        /* @__PURE__ */ jsx("p", { className: "split-subtitle", children: "Browse clubs. Pick dates. Get confirmed." }),
+        /* @__PURE__ */ jsxs("div", { className: "tour-preview", children: [
+          /* @__PURE__ */ jsx("div", { className: "tour-preview-header", children: "SAMPLE TOUR" }),
+          [
+            { num: 1, name: "Tootsie's Cabaret", meta: "Miami, FL \u2014 Jun 14", status: "confirmed" },
+            { num: 2, name: "Magic City", meta: "Atlanta, GA \u2014 Jun 18", status: "pending" },
+            { num: 3, name: "King of Diamonds", meta: "Miami, FL \u2014 Jun 22", status: "pending" }
+          ].map((stop, i) => /* @__PURE__ */ jsxs("div", { className: "tour-preview-stop", children: [
+            /* @__PURE__ */ jsx("div", { className: "tour-preview-num", children: stop.num }),
+            /* @__PURE__ */ jsxs("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "tour-preview-name", children: stop.name }),
+              /* @__PURE__ */ jsx("div", { className: "tour-preview-meta", children: stop.meta })
+            ] }),
+            /* @__PURE__ */ jsx("span", { className: `tour-preview-badge status-${stop.status}`, children: stop.status === "confirmed" ? "Confirmed" : "Pending" })
+          ] }, i))
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "split-stat-row", children: [
+          /* @__PURE__ */ jsxs("div", { className: "split-stat", children: [
+            /* @__PURE__ */ jsxs("div", { className: "split-stat-num", style: { color: "var(--primary)" }, children: [
+              SEED_CLUBS.length,
+              "+"
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "split-stat-label", children: "Clubs" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "split-stat", children: [
+            /* @__PURE__ */ jsx("div", { className: "split-stat-num", style: { color: "var(--primary-light)" }, children: uniqueStates }),
+            /* @__PURE__ */ jsx("div", { className: "split-stat-label", children: "States" })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "split-stat", children: [
+            /* @__PURE__ */ jsx("div", { className: "split-stat-num", style: { color: "var(--primary)" }, children: "Free" }),
+            /* @__PURE__ */ jsx("div", { className: "split-stat-label", children: "For Dancers" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx("button", { className: "btn btn-primary btn-lg", onClick: () => setPage("signup"), children: "Start Planning Your Tour" }),
+        /* @__PURE__ */ jsx("p", { style: { color: "var(--text-dim)", fontSize: "0.75rem", marginTop: "0.75rem" }, children: "Sign up free \u2014 browse all clubs instantly" })
       ] }),
-      /* @__PURE__ */ jsx("p", { children: "The first platform for dancers to plan tours across clubs nationwide \u2014 and for clubs to discover and book top talent." }),
-      /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }, children: [
-        /* @__PURE__ */ jsx("button", { className: "btn btn-primary btn-lg", onClick: () => setPage("signup"), children: "I'm a Dancer" }),
-        /* @__PURE__ */ jsx("button", { className: "btn btn-accent btn-lg", onClick: () => setPage("login"), children: "I'm a Club" })
+      /* @__PURE__ */ jsx("div", { className: "split-divider" }),
+      /* @__PURE__ */ jsxs("div", { className: "split-side split-right", children: [
+        /* @__PURE__ */ jsx("div", { className: "split-label", style: { color: "var(--accent)" }, children: "DANCER SHOWCASE" }),
+        /* @__PURE__ */ jsxs("h1", { className: "split-title", children: [
+          "Where The Money",
+          /* @__PURE__ */ jsx("br", {}),
+          /* @__PURE__ */ jsx("span", { style: { color: "var(--accent)" }, children: "Looks First" })
+        ] }),
+        /* @__PURE__ */ jsx("p", { className: "split-subtitle", children: "Your profile. Your links. Your spotlight." }),
+        /* @__PURE__ */ jsx("div", { className: "dancer-preview-row", children: [
+          { name: "Diamond", city: "Miami, FL", emoji: "\u{1F483}", tags: ["IG", "Linktree"] },
+          { name: "Sapphire", city: "Atlanta, GA", emoji: "\u2728", tags: ["IG", "OnlyFans"] }
+        ].map((d, i) => /* @__PURE__ */ jsxs("div", { className: "dancer-preview-card", children: [
+          /* @__PURE__ */ jsx("div", { className: "dancer-preview-avatar", children: d.emoji }),
+          /* @__PURE__ */ jsxs("div", { className: "dancer-preview-info", children: [
+            /* @__PURE__ */ jsx("div", { className: "dancer-preview-name", children: d.name }),
+            /* @__PURE__ */ jsx("div", { className: "dancer-preview-loc", children: d.city }),
+            /* @__PURE__ */ jsx("div", { className: "dancer-preview-tags", children: d.tags.map((t, j) => /* @__PURE__ */ jsx("span", { className: "dancer-preview-tag", children: t }, j)) })
+          ] })
+        ] }, i)) }),
+        /* @__PURE__ */ jsxs("div", { className: "split-features", children: [
+          /* @__PURE__ */ jsx("div", { children: "\u{1F517} Social links in one place" }),
+          /* @__PURE__ */ jsx("div", { children: "\u{1F4CD} Searchable by state & city" }),
+          /* @__PURE__ */ jsx("div", { children: "\u2B50 Featured profiles for top dancers" })
+        ] }),
+        /* @__PURE__ */ jsx("button", { className: "btn btn-accent btn-lg", onClick: () => setPage("signup"), children: "Create Your Profile" }),
+        /* @__PURE__ */ jsx("p", { style: { color: "var(--text-dim)", fontSize: "0.75rem", marginTop: "0.75rem" }, children: "Free to join \u2014 start getting noticed" })
       ] })
     ] }),
-    /* @__PURE__ */ jsxs("div", { className: "section", children: [
-      /* @__PURE__ */ jsxs("div", { className: "section-header", children: [
-        /* @__PURE__ */ jsx("h2", { children: "How StagePass Works" }),
-        /* @__PURE__ */ jsx("p", { children: "Three steps to your next tour." })
-      ] }),
-      /* @__PURE__ */ jsx("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }, children: [
-        { icon: "\u{1F50D}", title: "Browse Clubs", desc: "Search strip clubs by state, city, or name. See contact info, club type, and size \u2014 all in one place." },
-        { icon: "\u{1F5D3}\uFE0F", title: "Build Your Tour", desc: "Pick the clubs you want to dance at. Choose your dates. Submit booking requests directly to each club." },
-        { icon: "\u2705", title: "Get Confirmed", desc: "Clubs review your request and confirm your dates. Track every stop on your tour from one dashboard." }
-      ].map((step, i) => /* @__PURE__ */ jsxs("div", { className: "card", style: { textAlign: "center" }, children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "2.5rem", marginBottom: "0.75rem" }, children: step.icon }),
-        /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.5rem" }, children: step.title }),
-        /* @__PURE__ */ jsx("p", { style: { color: "var(--text-muted)", fontSize: "0.9rem" }, children: step.desc })
-      ] }, i)) })
-    ] }),
-    /* @__PURE__ */ jsx("div", { style: { background: "var(--bg-card)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "3rem 2rem" }, children: /* @__PURE__ */ jsxs("div", { style: { display: "flex", justifyContent: "center", gap: "4rem", flexWrap: "wrap", textAlign: "center" }, children: [
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsxs("div", { style: { fontSize: "2.5rem", fontWeight: 900, color: "var(--primary)" }, children: [
-          SEED_CLUBS.length,
-          "+"
-        ] }),
-        /* @__PURE__ */ jsx("div", { style: { color: "var(--text-muted)", fontSize: "0.85rem" }, children: "Clubs Listed" })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "2.5rem", fontWeight: 900, color: "var(--accent)" }, children: [...new Set(SEED_CLUBS.map((c) => c.state))].length }),
-        /* @__PURE__ */ jsx("div", { style: { color: "var(--text-muted)", fontSize: "0.85rem" }, children: "States Covered" })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "2.5rem", fontWeight: 900, color: "var(--primary-light)" }, children: "Free" }),
-        /* @__PURE__ */ jsx("div", { style: { color: "var(--text-muted)", fontSize: "0.85rem" }, children: "For Dancers" })
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsx("div", { className: "section", children: /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }, children: [
-      /* @__PURE__ */ jsxs("div", { className: "card", style: { borderColor: "var(--primary)", borderWidth: "2px" }, children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "2rem", marginBottom: "0.5rem" }, children: "\u{1F483}" }),
-        /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.75rem", color: "var(--primary-light)" }, children: "For Dancers" }),
-        /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }, children: [
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Browse every club in the country" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Build a multi-city tour in minutes" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Send booking requests to clubs directly" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Track confirmations in your dashboard" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Showcase your profile and social links" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 100% free to use" })
-        ] }),
-        /* @__PURE__ */ jsx("button", { className: "btn btn-primary", style: { marginTop: "1.25rem", width: "100%" }, onClick: () => setPage("signup"), children: "Sign Up as Dancer" })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { className: "card", style: { borderColor: "var(--accent)", borderWidth: "2px" }, children: [
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "2rem", marginBottom: "0.5rem" }, children: "\u{1F3E2}" }),
-        /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.75rem", color: "var(--accent)" }, children: "For Clubs" }),
-        /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }, children: [
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Pre-made account \u2014 just log in" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Review dancer booking requests" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Accept or decline with one click" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 See dancer profiles and portfolios" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Manage your upcoming lineup" }),
-          /* @__PURE__ */ jsx("div", { children: "\u2713 Get discovered by touring dancers" })
-        ] }),
-        /* @__PURE__ */ jsx("button", { className: "btn btn-accent", style: { marginTop: "1.25rem", width: "100%" }, onClick: () => setPage("login"), children: "Club Log In" })
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsx("footer", { className: "footer", children: /* @__PURE__ */ jsx("p", { children: "StagePass \u2014 Tour. Perform. Get Discovered." }) })
+    /* @__PURE__ */ jsx("footer", { className: "footer", children: /* @__PURE__ */ jsxs("p", { children: [
+      /* @__PURE__ */ jsx("span", { style: { color: "var(--accent)", fontWeight: 700 }, children: "Stage" }),
+      /* @__PURE__ */ jsx("span", { style: { color: "var(--success)", fontWeight: 700 }, children: "Pass" }),
+      " \u2014 Tour. Perform. Get Discovered."
+    ] }) })
   ] });
 }
 function ClubDirectory({ setPage, user }) {
