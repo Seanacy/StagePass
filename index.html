@@ -199,14 +199,25 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-b
 
 /* Responsive split */
 @media (max-width: 768px) {
-  .split-hero { flex-direction: column; }
-  .split-divider {
-    left: 10%; right: 10%; top: auto; bottom: auto; width: auto; height: 1px;
-    position: relative; margin: 0 auto;
-    background: linear-gradient(to right, transparent 5%, var(--primary) 30%, var(--accent) 70%, transparent 95%);
+  .split-hero {
+    flex-direction: column; min-height: auto;
   }
-  .split-side { padding: 2.5rem 1.5rem; }
-  .split-title { font-size: 1.6rem; }
+  .split-divider {
+    position: relative; left: auto; top: auto; bottom: auto;
+    width: 80%; height: 1px; margin: 0 auto;
+    background: linear-gradient(to right, transparent 0%, var(--primary) 25%, var(--accent) 75%, transparent 100%);
+  }
+  .split-side {
+    padding: 2rem 1.25rem;
+  }
+  .split-title { font-size: 1.5rem; }
+  .split-subtitle { font-size: 0.85rem; margin-bottom: 1rem; }
+  .tour-preview { max-width: 100%; }
+  .dancer-preview-row { max-width: 100%; }
+  .split-features { max-width: 100%; }
+  .split-stat-row { gap: 1.5rem; }
+  .split-stat-num { font-size: 1.2rem; }
+  .btn-lg { padding: 0.7rem 1.5rem; font-size: 0.9rem; }
 }
 
 /* Section */
