@@ -143,93 +143,135 @@ function Landing({ setPage }) {
 
   return (
     <div>
-      {/* Split Hero */}
-      <div className="split-hero">
-        {/* Left — Tour Builder */}
-        <div className="split-side split-left">
-          <div className="split-label" style={{ color: 'var(--primary)' }}>TOUR BUILDER</div>
-          <h1 className="split-title">
-            Build Your<br /><span style={{ color: 'var(--primary)' }}>Next Tour</span>
-          </h1>
-          <p className="split-subtitle">Browse clubs. Pick dates. Get confirmed.</p>
-
-          {/* Mini tour preview */}
-          <div className="tour-preview">
-            <div className="tour-preview-header">SAMPLE TOUR</div>
-            {[
-              { num: 1, name: "Tootsie's Cabaret", meta: 'Miami, FL — Jun 14', status: 'confirmed' },
-              { num: 2, name: 'Magic City', meta: 'Atlanta, GA — Jun 18', status: 'pending' },
-              { num: 3, name: 'King of Diamonds', meta: 'Miami, FL — Jun 22', status: 'pending' },
-            ].map((stop, i) => (
-              <div key={i} className="tour-preview-stop">
-                <div className="tour-preview-num">{stop.num}</div>
-                <div>
-                  <div className="tour-preview-name">{stop.name}</div>
-                  <div className="tour-preview-meta">{stop.meta}</div>
-                </div>
-                <span className={`tour-preview-badge status-${stop.status}`}>{stop.status === 'confirmed' ? 'Confirmed' : 'Pending'}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="split-stat-row">
-            <div className="split-stat">
-              <div className="split-stat-num" style={{ color: 'var(--primary)' }}>{SEED_CLUBS.length}+</div>
-              <div className="split-stat-label">Clubs</div>
-            </div>
-            <div className="split-stat">
-              <div className="split-stat-num" style={{ color: 'var(--primary-light)' }}>{uniqueStates}</div>
-              <div className="split-stat-label">States</div>
-            </div>
-            <div className="split-stat">
-              <div className="split-stat-num" style={{ color: 'var(--primary)' }}>Free</div>
-              <div className="split-stat-label">For Dancers</div>
-            </div>
-          </div>
-
-          <button className="btn btn-primary btn-lg" onClick={() => setPage('signup')}>Start Planning Your Tour</button>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.75rem' }}>Sign up free — browse all clubs instantly</p>
+      {/* Hero */}
+      <div className="hero">
+        <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.25rem' }}>
+          Build Your Tour.<br />
+          <span style={{ color: 'var(--accent)' }}>Join The <span style={{ color: 'var(--success)' }}>$</span>howcase.</span>
+        </h1>
+        <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', maxWidth: '560px', margin: '0 auto 2rem' }}>
+          The platform for dancers to plan tours across clubs nationwide — and get seen by the people who matter.
+        </p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary btn-lg" onClick={() => setPage('signup')}>I'm a Dancer</button>
+          <button className="btn btn-accent btn-lg" onClick={() => setPage('login')}>I'm a Club</button>
         </div>
 
-        {/* Center Divider Line */}
-        <div className="split-divider" />
+        {/* Stats row */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', marginTop: '3rem', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary)' }}>{SEED_CLUBS.length}+</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Clubs Listed</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent)' }}>{uniqueStates}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>States</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--success)' }}>Free</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>For Dancers</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Right — Dancer Showcase */}
-        <div className="split-side split-right">
-          <div className="split-label" style={{ color: 'var(--accent)' }}>DANCER SHOWCASE</div>
-          <h1 className="split-title">
-            Where The Money<br /><span style={{ color: 'var(--accent)' }}>Looks First</span>
-          </h1>
-          <p className="split-subtitle">Your profile. Your links. Your spotlight.</p>
+      {/* ─── Tour Section ─── */}
+      <div className="section" style={{ borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3rem', flexWrap: 'wrap' }}>
+          {/* Left — copy */}
+          <div style={{ flex: '1 1 320px' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--primary)', marginBottom: '0.75rem' }}>TOUR BUILDER</div>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+              Build Your <span style={{ color: 'var(--primary)' }}>Next Tour</span>
+            </h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+              Browse clubs by state, city, or name. Pick your dates. Submit booking requests. Track confirmations from one dashboard.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              <div>✓ {SEED_CLUBS.length}+ clubs across {uniqueStates} states</div>
+              <div>✓ Full Nude, Topless, and Bikini venues</div>
+              <div>✓ Send booking requests directly to clubs</div>
+              <div>✓ Track every stop from your dashboard</div>
+            </div>
+            <button className="btn btn-primary" onClick={() => setPage('clubs')}>Browse Clubs</button>
+          </div>
 
-          {/* Mini dancer cards */}
-          <div className="dancer-preview-row">
-            {[
-              { name: 'Diamond', city: 'Miami, FL', emoji: '💃', tags: ['IG', 'Linktree'] },
-              { name: 'Sapphire', city: 'Atlanta, GA', emoji: '✨', tags: ['IG', 'OnlyFans'] },
-            ].map((d, i) => (
-              <div key={i} className="dancer-preview-card">
-                <div className="dancer-preview-avatar">{d.emoji}</div>
-                <div className="dancer-preview-info">
-                  <div className="dancer-preview-name">{d.name}</div>
-                  <div className="dancer-preview-loc">{d.city}</div>
-                  <div className="dancer-preview-tags">
-                    {d.tags.map((t, j) => <span key={j} className="dancer-preview-tag">{t}</span>)}
+          {/* Right — tour preview card */}
+          <div style={{ flex: '1 1 300px', maxWidth: '380px' }}>
+            <div className="tour-preview" style={{ maxWidth: '100%' }}>
+              <div className="tour-preview-header">SAMPLE TOUR</div>
+              {[
+                { num: 1, name: "Tootsie's Cabaret", meta: 'Miami, FL — Jun 14', status: 'confirmed' },
+                { num: 2, name: 'Magic City', meta: 'Atlanta, GA — Jun 18', status: 'pending' },
+                { num: 3, name: 'King of Diamonds', meta: 'Miami, FL — Jun 22', status: 'pending' },
+              ].map((stop, i) => (
+                <div key={i} className="tour-preview-stop">
+                  <div className="tour-preview-num">{stop.num}</div>
+                  <div>
+                    <div className="tour-preview-name">{stop.name}</div>
+                    <div className="tour-preview-meta">{stop.meta}</div>
                   </div>
+                  <span className={`tour-preview-badge status-${stop.status}`}>{stop.status === 'confirmed' ? 'Confirmed' : 'Pending'}</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-
-          <div className="split-features">
-            <div>🔗 Social links in one place</div>
-            <div>📍 Searchable by state & city</div>
-            <div>⭐ Featured profiles for top dancers</div>
-          </div>
-
-          <button className="btn btn-accent btn-lg" onClick={() => setPage('signup')}>Create Your Profile</button>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.75rem' }}>Free to join — start getting noticed</p>
         </div>
+      </div>
+
+      {/* ─── Showcase Section ─── */}
+      <div style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        <div className="section" style={{ padding: '4rem 2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3rem', flexWrap: 'wrap-reverse' }}>
+            {/* Left — dancer preview cards */}
+            <div style={{ flex: '1 1 300px', maxWidth: '380px' }}>
+              <div className="dancer-preview-row" style={{ maxWidth: '100%' }}>
+                {[
+                  { name: 'Diamond', city: 'Miami, FL', emoji: '💃', tags: ['IG', 'Linktree'] },
+                  { name: 'Sapphire', city: 'Atlanta, GA', emoji: '✨', tags: ['IG', 'OnlyFans'] },
+                ].map((d, i) => (
+                  <div key={i} className="dancer-preview-card">
+                    <div className="dancer-preview-avatar">{d.emoji}</div>
+                    <div className="dancer-preview-info">
+                      <div className="dancer-preview-name">{d.name}</div>
+                      <div className="dancer-preview-loc">{d.city}</div>
+                      <div className="dancer-preview-tags">
+                        {d.tags.map((t, j) => <span key={j} className="dancer-preview-tag">{t}</span>)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right — copy */}
+            <div style={{ flex: '1 1 320px' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent)', marginBottom: '0.75rem' }}>THE $HOWCASE</div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.75rem' }}>
+                Where The Money <span style={{ color: 'var(--accent)' }}>Looks First</span>
+              </h2>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+                Your profile. Your links. Your spotlight. Get discovered by the people who spend.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                <div>✓ All your social links in one place</div>
+                <div>✓ Searchable by state, city, and club</div>
+                <div>✓ Featured profiles for top dancers</div>
+                <div>✓ Free to join — own your spotlight</div>
+              </div>
+              <button className="btn btn-accent" onClick={() => setPage('dancers')}>See Dancers</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── For Clubs CTA ─── */}
+      <div className="section" style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--success)', marginBottom: '0.75rem' }}>FOR CLUBS</div>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.75rem' }}>Manage Your Bookings</h2>
+        <p style={{ color: 'var(--text-muted)', maxWidth: '500px', margin: '0 auto 1.5rem', fontSize: '0.95rem' }}>
+          Review dancer requests, accept or decline with one click, and build your upcoming lineup — all from one dashboard.
+        </p>
+        <button className="btn btn-secondary btn-lg" onClick={() => setPage('login')}>Club Log In</button>
       </div>
 
       {/* Footer */}
