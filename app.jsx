@@ -18,6 +18,9 @@ const US_STATES = [
   'Virginia','Washington','West Virginia','Wisconsin','Wyoming'
 ];
 
+// ─── Admin ───
+const ADMIN_EMAIL = '247ggtms@gmail.com';
+
 // ─── Clubs are fetched from Supabase (no more hardcoded data) ───
 // Global club cache so multiple components can share one fetch
 let _clubsCache = null;
@@ -62,6 +65,10 @@ function Navbar({ user, page, setPage, onLogout, role }) {
         {user ? (
           <>
             <a href="#" onClick={(e) => { e.preventDefault(); setPage('dashboard'); }}>Dashboard</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setPage('claim'); }} style={{ fontSize: '0.8rem' }}>Claim</a>
+            {user.email === ADMIN_EMAIL && (
+              <a href="#" onClick={(e) => { e.preventDefault(); setPage('admin-codes'); }} style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Admin</a>
+            )}
             <button onClick={onLogout}>Log Out</button>
           </>
         ) : (
@@ -574,6 +581,219 @@ function DancerShowcase() {
 
       {/* Club detail modal */}
       {selectedClub && <ClubCardModal club={selectedClub} onClose={() => setSelectedClub(null)} />}
+    </div>
+  );
+}
+
+// ─── Claim Account ───
+function ClaimAccount({ user, setPage }) {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleClaim = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      // Look up the code
+      const { data: claim, error: fetchErr } = await supabase
+        .from('claim_codes')
+        .select('*')
+        .eq('code', code.trim().toUpperCase())
+        .single();
+
+      if (fetchErr || !claim) throw new Error('Invalid claim code. Check your code and try again.');
+      if (claim.claimed_by) throw new Error('This code has already been used.');
+
+      // Mark the code as claimed
+      const { error: updateErr } = await supabase
+        .from('claim_codes')
+        .update({ claimed_by: user.id, claimed_at: new Date().toISOString() })
+        .eq('id', claim.id);
+
+      if (updateErr) throw new Error('Failed to claim. Try again.');
+
+      // Update the actual entity (club or dancer) with claimed_by
+      const table = claim.entity_type === 'club' ? 'clubs' : 'dancers';
+      await supabase.from(table).update({ claimed_by: user.id }).eq('id', claim.entity_id);
+
+      // Update user metadata with their role
+      if (claim.entity_type === 'club') {
+        await supabase.auth.updateUser({ data: { role: 'club' } });
+      }
+
+      setSuccess(`Successfully claimed your ${claim.entity_type} account! Redirecting to dashboard...`);
+      setTimeout(() => setPage('dashboard'), 2000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-container">
+      <h2>Claim Your Account</h2>
+      <p className="subtitle">Enter the claim code you received to take ownership of your listing.</p>
+
+      <form onSubmit={handleClaim}>
+        <div className="form-group">
+          <label>Claim Code</label>
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            placeholder="e.g. SP-CLUB-A7X3"
+            required
+            style={{ fontFamily: 'monospace', fontSize: '1.1rem', letterSpacing: '0.05em', textAlign: 'center' }}
+          />
+        </div>
+
+        {error && <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
+        {success && <div style={{ color: 'var(--success)', fontSize: '0.85rem', marginBottom: '1rem' }}>{success}</div>}
+
+        <button className="btn btn-primary" type="submit" style={{ width: '100%', marginBottom: '1rem' }} disabled={loading}>
+          {loading ? 'Claiming...' : 'Claim Account'}
+        </button>
+      </form>
+
+      <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+        Don't have a code? Contact StagePass to get one for your club or dancer profile.
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Claim Code Generator ───
+function AdminClaimCodes({ user }) {
+  const { clubs } = useClubs();
+  const [dancers, setDancers] = useState([]);
+  const [entityType, setEntityType] = useState('club');
+  const [entityId, setEntityId] = useState('');
+  const [generatedCodes, setGeneratedCodes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [allCodes, setAllCodes] = useState([]);
+
+  useEffect(() => {
+    // Fetch all dancers for the dropdown
+    supabase.from('dancers').select('id, stage_name').order('stage_name').then(({ data }) => {
+      setDancers(data || []);
+    });
+    // Fetch existing codes
+    loadCodes();
+  }, []);
+
+  const loadCodes = async () => {
+    const { data } = await supabase.from('claim_codes').select('*').order('created_at', { ascending: false });
+    setAllCodes(data || []);
+  };
+
+  const generateCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = '';
+    for (let i = 0; i < 4; i++) result += chars[Math.floor(Math.random() * chars.length)];
+    const prefix = entityType === 'club' ? 'SP-CLUB' : 'SP-DANCER';
+    return `${prefix}-${result}`;
+  };
+
+  const handleGenerate = async () => {
+    if (!entityId) return;
+    setLoading(true);
+
+    const code = generateCode();
+    const { data, error } = await supabase.from('claim_codes').insert({
+      code,
+      entity_type: entityType,
+      entity_id: entityId
+    }).select().single();
+
+    if (!error && data) {
+      setGeneratedCodes(prev => [data, ...prev]);
+      setAllCodes(prev => [data, ...prev]);
+    }
+    setLoading(false);
+  };
+
+  // Only allow admin
+  if (user?.email !== ADMIN_EMAIL) {
+    return <div className="auth-container"><h2>Access Denied</h2><p>Admin only.</p></div>;
+  }
+
+  const entityOptions = entityType === 'club' ? clubs : dancers;
+  const getEntityName = (type, id) => {
+    if (type === 'club') return clubs.find(c => c.id === id)?.name || id;
+    return dancers.find(d => d.id === id)?.stage_name || id;
+  };
+
+  return (
+    <div className="dashboard">
+      <h2>Admin: Claim Codes</h2>
+      <p className="subtitle">Generate codes for clubs and dancers to claim their accounts.</p>
+
+      <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <h3 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Generate New Code</h3>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Type</label>
+            <select value={entityType} onChange={e => { setEntityType(e.target.value); setEntityId(''); }}>
+              <option value="club">Club</option>
+              <option value="dancer">Dancer</option>
+            </select>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '200px' }}>
+            <label>{entityType === 'club' ? 'Club' : 'Dancer'}</label>
+            <select value={entityId} onChange={e => setEntityId(e.target.value)}>
+              <option value="">Select...</option>
+              {entityOptions.map(item => (
+                <option key={item.id} value={item.id}>
+                  {entityType === 'club' ? `${item.name} — ${item.city}, ${item.state}` : item.stage_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="btn btn-primary" onClick={handleGenerate} disabled={!entityId || loading}>
+            {loading ? 'Generating...' : 'Generate Code'}
+          </button>
+        </div>
+      </div>
+
+      {/* Recently generated */}
+      {generatedCodes.length > 0 && (
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'var(--bg-card)', border: '2px solid var(--success)' }}>
+          <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem', color: 'var(--success)' }}>Just Generated</h3>
+          {generatedCodes.map(c => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>{c.code}</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {c.entity_type}: {getEntityName(c.entity_type, c.entity_id)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* All codes table */}
+      <div className="card" style={{ padding: '1.5rem' }}>
+        <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem' }}>All Codes ({allCodes.length})</h3>
+        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {allCodes.map(c => (
+            <div key={c.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '0.6rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem'
+            }}>
+              <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{c.code}</span>
+              <span style={{ color: 'var(--text-muted)' }}>{c.entity_type}: {getEntityName(c.entity_type, c.entity_id)}</span>
+              <span className={`status-badge ${c.claimed_by ? 'status-confirmed' : 'status-pending'}`}>
+                {c.claimed_by ? 'Claimed' : 'Available'}
+              </span>
+            </div>
+          ))}
+          {allCodes.length === 0 && <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '1rem' }}>No codes generated yet.</div>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1283,6 +1503,8 @@ function App() {
       {page === 'clubs' && <ClubDirectory setPage={setPage} user={user} />}
       {page === 'dancers' && <DancerShowcase />}
       {page === 'tour-builder' && user && <TourBuilder user={user} />}
+      {page === 'claim' && user && <ClaimAccount user={user} setPage={setPage} />}
+      {page === 'admin-codes' && user && <AdminClaimCodes user={user} />}
       {page === 'dashboard' && user && (
         role === 'club' ? <ClubDashboard user={user} /> : <DancerDashboard user={user} setPage={setPage} />
       )}

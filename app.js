@@ -58,6 +58,7 @@ var US_STATES = [
   "Wisconsin",
   "Wyoming"
 ];
+var ADMIN_EMAIL = "247ggtms@gmail.com";
 var _clubsCache = null;
 var _clubsFetching = false;
 var _clubsListeners = [];
@@ -110,6 +111,14 @@ function Navbar({ user, page, setPage, onLogout, role }) {
           e.preventDefault();
           setPage("dashboard");
         }, children: "Dashboard" }),
+        /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
+          e.preventDefault();
+          setPage("claim");
+        }, style: { fontSize: "0.8rem" }, children: "Claim" }),
+        user.email === ADMIN_EMAIL && /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
+          e.preventDefault();
+          setPage("admin-codes");
+        }, style: { fontSize: "0.8rem", color: "var(--accent)" }, children: "Admin" }),
         /* @__PURE__ */ jsx("button", { onClick: onLogout, children: "Log Out" })
       ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
         /* @__PURE__ */ jsx("button", { className: "btn btn-sm btn-secondary", onClick: () => setPage("login"), children: "Log In" }),
@@ -583,6 +592,175 @@ function DancerShowcase() {
       ] }, dancer.id);
     }) }),
     selectedClub && /* @__PURE__ */ jsx(ClubCardModal, { club: selectedClub, onClose: () => setSelectedClub(null) })
+  ] });
+}
+function ClaimAccount({ user, setPage }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+  const handleClaim = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      const { data: claim, error: fetchErr } = await supabase.from("claim_codes").select("*").eq("code", code.trim().toUpperCase()).single();
+      if (fetchErr || !claim) throw new Error("Invalid claim code. Check your code and try again.");
+      if (claim.claimed_by) throw new Error("This code has already been used.");
+      const { error: updateErr } = await supabase.from("claim_codes").update({ claimed_by: user.id, claimed_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", claim.id);
+      if (updateErr) throw new Error("Failed to claim. Try again.");
+      const table = claim.entity_type === "club" ? "clubs" : "dancers";
+      await supabase.from(table).update({ claimed_by: user.id }).eq("id", claim.entity_id);
+      if (claim.entity_type === "club") {
+        await supabase.auth.updateUser({ data: { role: "club" } });
+      }
+      setSuccess(`Successfully claimed your ${claim.entity_type} account! Redirecting to dashboard...`);
+      setTimeout(() => setPage("dashboard"), 2e3);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxs("div", { className: "auth-container", children: [
+    /* @__PURE__ */ jsx("h2", { children: "Claim Your Account" }),
+    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Enter the claim code you received to take ownership of your listing." }),
+    /* @__PURE__ */ jsxs("form", { onSubmit: handleClaim, children: [
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "Claim Code" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            value: code,
+            onChange: (e) => setCode(e.target.value.toUpperCase()),
+            placeholder: "e.g. SP-CLUB-A7X3",
+            required: true,
+            style: { fontFamily: "monospace", fontSize: "1.1rem", letterSpacing: "0.05em", textAlign: "center" }
+          }
+        )
+      ] }),
+      error && /* @__PURE__ */ jsx("div", { style: { color: "var(--danger)", fontSize: "0.85rem", marginBottom: "1rem" }, children: error }),
+      success && /* @__PURE__ */ jsx("div", { style: { color: "var(--success)", fontSize: "0.85rem", marginBottom: "1rem" }, children: success }),
+      /* @__PURE__ */ jsx("button", { className: "btn btn-primary", type: "submit", style: { width: "100%", marginBottom: "1rem" }, disabled: loading, children: loading ? "Claiming..." : "Claim Account" })
+    ] }),
+    /* @__PURE__ */ jsx("div", { style: { textAlign: "center", fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "1rem" }, children: "Don't have a code? Contact StagePass to get one for your club or dancer profile." })
+  ] });
+}
+function AdminClaimCodes({ user }) {
+  const { clubs } = useClubs();
+  const [dancers, setDancers] = useState([]);
+  const [entityType, setEntityType] = useState("club");
+  const [entityId, setEntityId] = useState("");
+  const [generatedCodes, setGeneratedCodes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [allCodes, setAllCodes] = useState([]);
+  useEffect(() => {
+    supabase.from("dancers").select("id, stage_name").order("stage_name").then(({ data }) => {
+      setDancers(data || []);
+    });
+    loadCodes();
+  }, []);
+  const loadCodes = async () => {
+    const { data } = await supabase.from("claim_codes").select("*").order("created_at", { ascending: false });
+    setAllCodes(data || []);
+  };
+  const generateCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let result = "";
+    for (let i = 0; i < 4; i++) result += chars[Math.floor(Math.random() * chars.length)];
+    const prefix = entityType === "club" ? "SP-CLUB" : "SP-DANCER";
+    return `${prefix}-${result}`;
+  };
+  const handleGenerate = async () => {
+    if (!entityId) return;
+    setLoading(true);
+    const code = generateCode();
+    const { data, error } = await supabase.from("claim_codes").insert({
+      code,
+      entity_type: entityType,
+      entity_id: entityId
+    }).select().single();
+    if (!error && data) {
+      setGeneratedCodes((prev) => [data, ...prev]);
+      setAllCodes((prev) => [data, ...prev]);
+    }
+    setLoading(false);
+  };
+  if (user?.email !== ADMIN_EMAIL) {
+    return /* @__PURE__ */ jsxs("div", { className: "auth-container", children: [
+      /* @__PURE__ */ jsx("h2", { children: "Access Denied" }),
+      /* @__PURE__ */ jsx("p", { children: "Admin only." })
+    ] });
+  }
+  const entityOptions = entityType === "club" ? clubs : dancers;
+  const getEntityName = (type, id) => {
+    if (type === "club") return clubs.find((c) => c.id === id)?.name || id;
+    return dancers.find((d) => d.id === id)?.stage_name || id;
+  };
+  return /* @__PURE__ */ jsxs("div", { className: "dashboard", children: [
+    /* @__PURE__ */ jsx("h2", { children: "Admin: Claim Codes" }),
+    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Generate codes for clubs and dancers to claim their accounts." }),
+    /* @__PURE__ */ jsxs("div", { className: "card", style: { padding: "1.5rem", marginBottom: "2rem" }, children: [
+      /* @__PURE__ */ jsx("h3", { style: { marginBottom: "1rem", fontSize: "1rem" }, children: "Generate New Code" }),
+      /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }, children: [
+        /* @__PURE__ */ jsxs("div", { className: "form-group", style: { marginBottom: 0 }, children: [
+          /* @__PURE__ */ jsx("label", { children: "Type" }),
+          /* @__PURE__ */ jsxs("select", { value: entityType, onChange: (e) => {
+            setEntityType(e.target.value);
+            setEntityId("");
+          }, children: [
+            /* @__PURE__ */ jsx("option", { value: "club", children: "Club" }),
+            /* @__PURE__ */ jsx("option", { value: "dancer", children: "Dancer" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "form-group", style: { marginBottom: 0, flex: 1, minWidth: "200px" }, children: [
+          /* @__PURE__ */ jsx("label", { children: entityType === "club" ? "Club" : "Dancer" }),
+          /* @__PURE__ */ jsxs("select", { value: entityId, onChange: (e) => setEntityId(e.target.value), children: [
+            /* @__PURE__ */ jsx("option", { value: "", children: "Select..." }),
+            entityOptions.map((item) => /* @__PURE__ */ jsx("option", { value: item.id, children: entityType === "club" ? `${item.name} \u2014 ${item.city}, ${item.state}` : item.stage_name }, item.id))
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx("button", { className: "btn btn-primary", onClick: handleGenerate, disabled: !entityId || loading, children: loading ? "Generating..." : "Generate Code" })
+      ] })
+    ] }),
+    generatedCodes.length > 0 && /* @__PURE__ */ jsxs("div", { className: "card", style: { padding: "1.5rem", marginBottom: "2rem", background: "var(--bg-card)", border: "2px solid var(--success)" }, children: [
+      /* @__PURE__ */ jsx("h3", { style: { marginBottom: "0.75rem", fontSize: "1rem", color: "var(--success)" }, children: "Just Generated" }),
+      generatedCodes.map((c) => /* @__PURE__ */ jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0", borderBottom: "1px solid var(--border)" }, children: [
+        /* @__PURE__ */ jsx("span", { style: { fontFamily: "monospace", fontSize: "1.1rem", fontWeight: 700, color: "var(--primary)" }, children: c.code }),
+        /* @__PURE__ */ jsxs("span", { style: { fontSize: "0.8rem", color: "var(--text-muted)" }, children: [
+          c.entity_type,
+          ": ",
+          getEntityName(c.entity_type, c.entity_id)
+        ] })
+      ] }, c.id))
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "card", style: { padding: "1.5rem" }, children: [
+      /* @__PURE__ */ jsxs("h3", { style: { marginBottom: "0.75rem", fontSize: "1rem" }, children: [
+        "All Codes (",
+        allCodes.length,
+        ")"
+      ] }),
+      /* @__PURE__ */ jsxs("div", { style: { maxHeight: "400px", overflowY: "auto" }, children: [
+        allCodes.map((c) => /* @__PURE__ */ jsxs("div", { style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "0.6rem 0",
+          borderBottom: "1px solid var(--border)",
+          fontSize: "0.85rem"
+        }, children: [
+          /* @__PURE__ */ jsx("span", { style: { fontFamily: "monospace", fontWeight: 600 }, children: c.code }),
+          /* @__PURE__ */ jsxs("span", { style: { color: "var(--text-muted)" }, children: [
+            c.entity_type,
+            ": ",
+            getEntityName(c.entity_type, c.entity_id)
+          ] }),
+          /* @__PURE__ */ jsx("span", { className: `status-badge ${c.claimed_by ? "status-confirmed" : "status-pending"}`, children: c.claimed_by ? "Claimed" : "Available" })
+        ] }, c.id)),
+        allCodes.length === 0 && /* @__PURE__ */ jsx("div", { style: { color: "var(--text-dim)", textAlign: "center", padding: "1rem" }, children: "No codes generated yet." })
+      ] })
+    ] })
   ] });
 }
 function AuthForm({ mode, setPage, onAuth }) {
@@ -1184,6 +1362,8 @@ function App() {
     page === "clubs" && /* @__PURE__ */ jsx(ClubDirectory, { setPage, user }),
     page === "dancers" && /* @__PURE__ */ jsx(DancerShowcase, {}),
     page === "tour-builder" && user && /* @__PURE__ */ jsx(TourBuilder, { user }),
+    page === "claim" && user && /* @__PURE__ */ jsx(ClaimAccount, { user, setPage }),
+    page === "admin-codes" && user && /* @__PURE__ */ jsx(AdminClaimCodes, { user }),
     page === "dashboard" && user && (role === "club" ? /* @__PURE__ */ jsx(ClubDashboard, { user }) : /* @__PURE__ */ jsx(DancerDashboard, { user, setPage }))
   ] });
 }
