@@ -464,11 +464,68 @@ function SocialIconTray({ instagram, twitter, onlyfans, linktree }) {
     i
   )) });
 }
+function ClubCardModal({ club, onClose }) {
+  if (!club) return null;
+  return /* @__PURE__ */ jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxs("div", { className: "club-detail-card", onClick: (e) => e.stopPropagation(), children: [
+    /* @__PURE__ */ jsx("button", { className: "modal-close", onClick: onClose, children: "\u2715" }),
+    /* @__PURE__ */ jsxs("div", { className: "club-detail-header", children: [
+      /* @__PURE__ */ jsx("div", { className: "club-detail-icon", children: /* @__PURE__ */ jsxs("svg", { width: "48", height: "48", viewBox: "0 0 24 24", fill: "none", stroke: "var(--accent)", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round", children: [
+        /* @__PURE__ */ jsx("path", { d: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" }),
+        /* @__PURE__ */ jsx("polyline", { points: "9 22 9 12 15 12 15 22" })
+      ] }) }),
+      /* @__PURE__ */ jsx("div", { className: "club-detail-type-badge", children: club.type }),
+      /* @__PURE__ */ jsxs("div", { className: "club-detail-size-badge", children: [
+        club.size,
+        " Venue"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "club-detail-info", children: [
+      /* @__PURE__ */ jsx("div", { className: "club-detail-name", children: club.name }),
+      /* @__PURE__ */ jsxs("div", { className: "club-detail-location", children: [
+        club.city,
+        ", ",
+        club.state
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "club-detail-divider" }),
+      /* @__PURE__ */ jsxs("div", { className: "club-detail-row", children: [
+        /* @__PURE__ */ jsxs("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "var(--text-muted)", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+          /* @__PURE__ */ jsx("path", { d: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" }),
+          /* @__PURE__ */ jsx("circle", { cx: "12", cy: "10", r: "3" })
+        ] }),
+        /* @__PURE__ */ jsx("span", { children: club.address })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "club-detail-row", children: [
+        /* @__PURE__ */ jsx("svg", { width: "14", height: "14", viewBox: "0 0 24 24", fill: "none", stroke: "var(--text-muted)", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ jsx("path", { d: "M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" }) }),
+        /* @__PURE__ */ jsx("span", { children: club.phone })
+      ] })
+    ] })
+  ] }) });
+}
+function AvailabilityDisplay({ days, timeStart, timeEnd }) {
+  if (!days || days.length === 0) return null;
+  const dayAbbrevs = { "Monday": "Mon", "Tuesday": "Tue", "Wednesday": "Wed", "Thursday": "Thu", "Friday": "Fri", "Saturday": "Sat", "Sunday": "Sun" };
+  const abbrevDays = days.map((d) => dayAbbrevs[d] || d);
+  const timeStr = timeStart && timeEnd ? `${timeStart} \u2013 ${timeEnd}` : timeStart || "";
+  return /* @__PURE__ */ jsxs("div", { className: "availability-display", children: [
+    /* @__PURE__ */ jsxs("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "var(--success)", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+      /* @__PURE__ */ jsx("circle", { cx: "12", cy: "12", r: "10" }),
+      /* @__PURE__ */ jsx("polyline", { points: "12 6 12 12 16 14" })
+    ] }),
+    /* @__PURE__ */ jsx("span", { className: "avail-days", children: abbrevDays.join(", ") }),
+    timeStr && /* @__PURE__ */ jsx("span", { className: "avail-time", children: timeStr })
+  ] });
+}
+function findClubInSystem(clubName) {
+  if (!clubName) return null;
+  const lower = clubName.toLowerCase().trim();
+  return SEED_CLUBS.find((c) => c.name.toLowerCase() === lower) || null;
+}
 function DancerShowcase() {
   const [dancers, setDancers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedClub, setSelectedClub] = useState(null);
   useEffect(() => {
     loadDancers();
   }, []);
@@ -522,22 +579,48 @@ function DancerShowcase() {
         states.map((s) => /* @__PURE__ */ jsx("option", { value: s, children: s }, s))
       ] })
     ] }),
-    filtered.length === 0 ? /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "4rem", color: "var(--text-dim)" }, children: dancers.length === 0 ? "No dancers in the showcase yet. Be the first!" : "No dancers match your search." }) : /* @__PURE__ */ jsx("div", { className: "dancer-grid", children: filtered.map((dancer) => /* @__PURE__ */ jsxs("div", { className: "dancer-card", children: [
-      /* @__PURE__ */ jsx(MediaCarousel, { photos: dancer.photos, videos: dancer.videos }),
-      /* @__PURE__ */ jsxs("div", { className: "dancer-info", children: [
-        /* @__PURE__ */ jsx("div", { className: "dancer-name", children: dancer.stage_name }),
-        /* @__PURE__ */ jsx("div", { className: "dancer-location", children: [dancer.city, dancer.state].filter(Boolean).join(", ") || "Location not set" }),
-        /* @__PURE__ */ jsx(
-          SocialIconTray,
-          {
-            instagram: dancer.instagram,
-            twitter: dancer.twitter,
-            onlyfans: dancer.onlyfans,
-            linktree: dancer.linktree
-          }
-        )
-      ] })
-    ] }, dancer.id)) })
+    filtered.length === 0 ? /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "4rem", color: "var(--text-dim)" }, children: dancers.length === 0 ? "No dancers in the showcase yet. Be the first!" : "No dancers match your search." }) : /* @__PURE__ */ jsx("div", { className: "dancer-grid", children: filtered.map((dancer) => {
+      const matchedClub = findClubInSystem(dancer.home_club);
+      return /* @__PURE__ */ jsxs("div", { className: "dancer-card", children: [
+        /* @__PURE__ */ jsx(MediaCarousel, { photos: dancer.photos, videos: dancer.videos }),
+        /* @__PURE__ */ jsxs("div", { className: "dancer-info", children: [
+          /* @__PURE__ */ jsx("div", { className: "dancer-name", children: dancer.stage_name }),
+          /* @__PURE__ */ jsx("div", { className: "dancer-location", children: [dancer.city, dancer.state].filter(Boolean).join(", ") || "Location not set" }),
+          dancer.home_club && /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: `dancer-club ${matchedClub ? "clickable" : ""}`,
+              onClick: matchedClub ? () => setSelectedClub(matchedClub) : void 0,
+              children: [
+                /* @__PURE__ */ jsxs("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+                  /* @__PURE__ */ jsx("path", { d: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" }),
+                  /* @__PURE__ */ jsx("polyline", { points: "9 22 9 12 15 12 15 22" })
+                ] }),
+                dancer.home_club
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            AvailabilityDisplay,
+            {
+              days: dancer.available_days,
+              timeStart: dancer.available_time_start,
+              timeEnd: dancer.available_time_end
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            SocialIconTray,
+            {
+              instagram: dancer.instagram,
+              twitter: dancer.twitter,
+              onlyfans: dancer.onlyfans,
+              linktree: dancer.linktree
+            }
+          )
+        ] })
+      ] }, dancer.id);
+    }) }),
+    selectedClub && /* @__PURE__ */ jsx(ClubCardModal, { club: selectedClub, onClose: () => setSelectedClub(null) })
   ] });
 }
 function AuthForm({ mode, setPage, onAuth }) {
@@ -716,6 +799,13 @@ function DancerDashboard({ user, setPage }) {
   const [twitter, setTwitter] = useState("");
   const [onlyfans, setOnlyfans] = useState("");
   const [linktree, setLinktree] = useState("");
+  const [availDays, setAvailDays] = useState([]);
+  const [availTimeStart, setAvailTimeStart] = useState("");
+  const [availTimeEnd, setAvailTimeEnd] = useState("");
+  const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const toggleDay = (day) => {
+    setAvailDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]);
+  };
   useEffect(() => {
     if (user) loadProfile();
   }, [user]);
@@ -737,6 +827,9 @@ function DancerDashboard({ user, setPage }) {
       setTwitter(dancer.twitter || "");
       setOnlyfans(dancer.onlyfans || "");
       setLinktree(dancer.linktree || "");
+      setAvailDays(dancer.available_days || []);
+      setAvailTimeStart(dancer.available_time_start || "");
+      setAvailTimeEnd(dancer.available_time_end || "");
       const { data: media } = await supabase.from("dancer_media").select("*").eq("dancer_id", dancer.id).order("display_order");
       const p = (media || []).filter((m) => m.media_type === "photo");
       const v = (media || []).filter((m) => m.media_type === "video");
@@ -763,6 +856,9 @@ function DancerDashboard({ user, setPage }) {
         twitter,
         onlyfans,
         linktree,
+        available_days: availDays,
+        available_time_start: availTimeStart,
+        available_time_end: availTimeEnd,
         updated_at: (/* @__PURE__ */ new Date()).toISOString()
       }).eq("id", dancerProfile.id);
       if (error) throw error;
@@ -956,6 +1052,41 @@ function DancerDashboard({ user, setPage }) {
       /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
         /* @__PURE__ */ jsx("label", { children: "Bio" }),
         /* @__PURE__ */ jsx("textarea", { value: bio, onChange: (e) => setBio(e.target.value), placeholder: "Tell clubs about yourself...", style: { minHeight: "80px" } })
+      ] }),
+      /* @__PURE__ */ jsx("h4", { style: { fontSize: "0.9rem", fontWeight: 700, color: "var(--success)", marginBottom: "0.75rem", marginTop: "0.5rem" }, children: "Availability" }),
+      /* @__PURE__ */ jsx("p", { style: { fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "0.75rem" }, children: "When are you available to work? This shows on your card so clubs and viewers know your schedule." }),
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "Days Available" }),
+        /* @__PURE__ */ jsx("div", { className: "day-picker", children: ALL_DAYS.map((day) => /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            className: `day-chip ${availDays.includes(day) ? "active" : ""}`,
+            onClick: () => toggleDay(day),
+            children: day.slice(0, 3)
+          },
+          day
+        )) })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }, children: [
+        /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+          /* @__PURE__ */ jsx("label", { children: "Start Time" }),
+          /* @__PURE__ */ jsxs("select", { value: availTimeStart, onChange: (e) => setAvailTimeStart(e.target.value), children: [
+            /* @__PURE__ */ jsx("option", { value: "", children: "Select..." }),
+            ["6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM", "11:00 PM", "12:00 AM"].map(
+              (t) => /* @__PURE__ */ jsx("option", { value: t, children: t }, t)
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+          /* @__PURE__ */ jsx("label", { children: "End Time" }),
+          /* @__PURE__ */ jsxs("select", { value: availTimeEnd, onChange: (e) => setAvailTimeEnd(e.target.value), children: [
+            /* @__PURE__ */ jsx("option", { value: "", children: "Select..." }),
+            ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM", "4:00 AM", "5:00 AM", "6:00 AM"].map(
+              (t) => /* @__PURE__ */ jsx("option", { value: t, children: t }, t)
+            )
+          ] })
+        ] })
       ] }),
       /* @__PURE__ */ jsx("h4", { style: { fontSize: "0.9rem", fontWeight: 700, color: "var(--accent)", marginBottom: "0.75rem", marginTop: "0.5rem" }, children: "Social Links" }),
       /* @__PURE__ */ jsx("p", { style: { fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }, children: "Paste your full profile URLs. Only filled-in links will show on your card." }),

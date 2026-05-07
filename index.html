@@ -404,6 +404,92 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-b
   border-color: currentColor; transform: scale(1.1);
 }
 
+/* ─── Dancer Card — Club + Availability ─── */
+.dancer-club {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;
+}
+.dancer-club.clickable {
+  color: var(--accent); cursor: pointer; transition: color 0.2s;
+}
+.dancer-club.clickable:hover { color: var(--primary-light); text-decoration: underline; }
+
+.availability-display {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  margin-top: 4px; font-size: 0.72rem;
+}
+.avail-days { color: var(--success); font-weight: 600; }
+.avail-time { color: var(--text-dim); }
+
+/* ─── Club Card Modal ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; backdrop-filter: blur(4px);
+}
+.club-detail-card {
+  width: 340px; max-width: 90vw; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: 1rem;
+  overflow: hidden; position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-close {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); color: #fff; border: none;
+  font-size: 1rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.modal-close:hover { background: var(--danger); }
+.club-detail-header {
+  width: 100%; aspect-ratio: 4/3; position: relative;
+  background: linear-gradient(135deg, rgba(249,202,36,0.15), rgba(0,184,148,0.1));
+  display: flex; align-items: center; justify-content: center;
+}
+.club-detail-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: rgba(249,202,36,0.1); border: 2px solid rgba(249,202,36,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.club-detail-type-badge {
+  position: absolute; bottom: 10px; left: 10px;
+  padding: 3px 10px; border-radius: 1rem; font-size: 0.7rem;
+  font-weight: 700; background: rgba(232,67,147,0.2); color: var(--primary-light);
+}
+.club-detail-size-badge {
+  position: absolute; bottom: 10px; right: 10px;
+  padding: 3px 10px; border-radius: 1rem; font-size: 0.7rem;
+  font-weight: 700; background: rgba(0,184,148,0.15); color: var(--success);
+}
+.club-detail-info { padding: 1.25rem; }
+.club-detail-name { font-size: 1.15rem; font-weight: 800; margin-bottom: 2px; }
+.club-detail-location { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+.club-detail-divider {
+  height: 1px; background: var(--border); margin-bottom: 0.75rem;
+}
+.club-detail-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;
+}
+.club-detail-row svg { flex-shrink: 0; margin-top: 2px; }
+
+/* ─── Day Picker (Dashboard) ─── */
+.day-picker {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.day-chip {
+  padding: 6px 12px; border-radius: 1rem; font-size: 0.8rem;
+  font-weight: 600; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.day-chip.active {
+  background: var(--success); border-color: var(--success);
+  color: #fff;
+}
+.day-chip:hover:not(.active) { border-color: var(--success); color: var(--success); }
+
 /* ─── Media Management Grid (Dashboard) ─── */
 .media-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

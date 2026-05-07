@@ -447,12 +447,73 @@ function SocialIconTray({ instagram, twitter, onlyfans, linktree }) {
   );
 }
 
+// ─── Club Card Modal ───
+function ClubCardModal({ club, onClose }) {
+  if (!club) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="club-detail-card" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        {/* Club header area (styled like dancer card carousel area) */}
+        <div className="club-detail-header">
+          <div className="club-detail-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <div className="club-detail-type-badge">{club.type}</div>
+          <div className="club-detail-size-badge">{club.size} Venue</div>
+        </div>
+        {/* Club info */}
+        <div className="club-detail-info">
+          <div className="club-detail-name">{club.name}</div>
+          <div className="club-detail-location">{club.city}, {club.state}</div>
+          <div className="club-detail-divider"></div>
+          <div className="club-detail-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>{club.address}</span>
+          </div>
+          <div className="club-detail-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            <span>{club.phone}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Availability Display ───
+function AvailabilityDisplay({ days, timeStart, timeEnd }) {
+  if (!days || days.length === 0) return null;
+  const dayAbbrevs = { 'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed', 'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat', 'Sunday': 'Sun' };
+  const abbrevDays = days.map(d => dayAbbrevs[d] || d);
+  const timeStr = timeStart && timeEnd ? `${timeStart} – ${timeEnd}` : timeStart || '';
+
+  return (
+    <div className="availability-display">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span className="avail-days">{abbrevDays.join(', ')}</span>
+      {timeStr && <span className="avail-time">{timeStr}</span>}
+    </div>
+  );
+}
+
+// ─── Helper: find a club in our system by name ───
+function findClubInSystem(clubName) {
+  if (!clubName) return null;
+  const lower = clubName.toLowerCase().trim();
+  return SEED_CLUBS.find(c => c.name.toLowerCase() === lower) || null;
+}
+
 // ─── Dancer Showcase ───
 function DancerShowcase() {
   const [dancers, setDancers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [selectedClub, setSelectedClub] = useState(null);
 
   useEffect(() => {
     loadDancers();
@@ -538,23 +599,41 @@ function DancerShowcase() {
         </div>
       ) : (
         <div className="dancer-grid">
-          {filtered.map(dancer => (
-            <div key={dancer.id} className="dancer-card">
-              <MediaCarousel photos={dancer.photos} videos={dancer.videos} />
-              <div className="dancer-info">
-                <div className="dancer-name">{dancer.stage_name}</div>
-                <div className="dancer-location">{[dancer.city, dancer.state].filter(Boolean).join(', ') || 'Location not set'}</div>
-                <SocialIconTray
-                  instagram={dancer.instagram}
-                  twitter={dancer.twitter}
-                  onlyfans={dancer.onlyfans}
-                  linktree={dancer.linktree}
-                />
+          {filtered.map(dancer => {
+            const matchedClub = findClubInSystem(dancer.home_club);
+            return (
+              <div key={dancer.id} className="dancer-card">
+                <MediaCarousel photos={dancer.photos} videos={dancer.videos} />
+                <div className="dancer-info">
+                  <div className="dancer-name">{dancer.stage_name}</div>
+                  <div className="dancer-location">{[dancer.city, dancer.state].filter(Boolean).join(', ') || 'Location not set'}</div>
+                  {dancer.home_club && (
+                    <div className={`dancer-club ${matchedClub ? 'clickable' : ''}`}
+                      onClick={matchedClub ? () => setSelectedClub(matchedClub) : undefined}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                      {dancer.home_club}
+                    </div>
+                  )}
+                  <AvailabilityDisplay
+                    days={dancer.available_days}
+                    timeStart={dancer.available_time_start}
+                    timeEnd={dancer.available_time_end}
+                  />
+                  <SocialIconTray
+                    instagram={dancer.instagram}
+                    twitter={dancer.twitter}
+                    onlyfans={dancer.onlyfans}
+                    linktree={dancer.linktree}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      {/* Club detail modal */}
+      {selectedClub && <ClubCardModal club={selectedClub} onClose={() => setSelectedClub(null)} />}
     </div>
   );
 }
@@ -750,6 +829,14 @@ function DancerDashboard({ user, setPage }) {
   const [twitter, setTwitter] = useState('');
   const [onlyfans, setOnlyfans] = useState('');
   const [linktree, setLinktree] = useState('');
+  const [availDays, setAvailDays] = useState([]);
+  const [availTimeStart, setAvailTimeStart] = useState('');
+  const [availTimeEnd, setAvailTimeEnd] = useState('');
+
+  const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const toggleDay = (day) => {
+    setAvailDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
 
   useEffect(() => {
     if (user) loadProfile();
@@ -785,6 +872,9 @@ function DancerDashboard({ user, setPage }) {
       setTwitter(dancer.twitter || '');
       setOnlyfans(dancer.onlyfans || '');
       setLinktree(dancer.linktree || '');
+      setAvailDays(dancer.available_days || []);
+      setAvailTimeStart(dancer.available_time_start || '');
+      setAvailTimeEnd(dancer.available_time_end || '');
 
       // Load media
       const { data: media } = await supabase
@@ -815,6 +905,9 @@ function DancerDashboard({ user, setPage }) {
           stage_name: stageName,
           city, state, home_club: homeClub, bio,
           instagram, twitter, onlyfans, linktree,
+          available_days: availDays,
+          available_time_start: availTimeStart,
+          available_time_end: availTimeEnd,
           updated_at: new Date().toISOString(),
         })
         .eq('id', dancerProfile.id);
@@ -1045,6 +1138,43 @@ function DancerDashboard({ user, setPage }) {
           <div className="form-group">
             <label>Bio</label>
             <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell clubs about yourself..." style={{ minHeight: '80px' }} />
+          </div>
+
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--success)', marginBottom: '0.75rem', marginTop: '0.5rem' }}>Availability</h4>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.75rem' }}>
+            When are you available to work? This shows on your card so clubs and viewers know your schedule.
+          </p>
+          <div className="form-group">
+            <label>Days Available</label>
+            <div className="day-picker">
+              {ALL_DAYS.map(day => (
+                <button key={day} type="button"
+                  className={`day-chip ${availDays.includes(day) ? 'active' : ''}`}
+                  onClick={() => toggleDay(day)}>
+                  {day.slice(0, 3)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label>Start Time</label>
+              <select value={availTimeStart} onChange={e => setAvailTimeStart(e.target.value)}>
+                <option value="">Select...</option>
+                {['6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM','12:00 AM'].map(t =>
+                  <option key={t} value={t}>{t}</option>
+                )}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>End Time</label>
+              <select value={availTimeEnd} onChange={e => setAvailTimeEnd(e.target.value)}>
+                <option value="">Select...</option>
+                {['12:00 AM','1:00 AM','2:00 AM','3:00 AM','4:00 AM','5:00 AM','6:00 AM'].map(t =>
+                  <option key={t} value={t}>{t}</option>
+                )}
+              </select>
+            </div>
           </div>
 
           <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)', marginBottom: '0.75rem', marginTop: '0.5rem' }}>Social Links</h4>
