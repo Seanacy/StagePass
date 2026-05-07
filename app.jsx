@@ -92,17 +92,29 @@ function useNotifications(user) {
 
 // ─── Navbar ───
 function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const nav = (pg) => { setPage(pg); setMenuOpen(false); };
+
   return (
     <nav className="navbar">
-      <div className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => setPage('landing')}>
+      <div className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => nav('landing')}>
         Stage<span className="green">Pass</span>
+        {unreadCount > 0 && (
+          <span style={{
+            marginLeft: '6px', background: 'var(--danger)', color: '#fff', fontSize: '0.6rem',
+            fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+        )}
       </div>
-      <div className="navbar-links">
-        <a href="#" onClick={(e) => { e.preventDefault(); setPage('clubs'); }}>Clubs</a>
-        <a href="#" onClick={(e) => { e.preventDefault(); setPage('dancers'); }}>Dancers</a>
+      <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Menu">{menuOpen ? '✕' : '☰'}</button>
+      <div className={`navbar-links${menuOpen ? ' open' : ''}`}>
+        <a href="#" onClick={(e) => { e.preventDefault(); nav('clubs'); }}>Clubs</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); nav('dancers'); }}>Dancers</a>
         {user ? (
           <>
-            <a href="#" onClick={(e) => { e.preventDefault(); setPage('dashboard'); }} style={{ position: 'relative' }}>
+            <a href="#" onClick={(e) => { e.preventDefault(); nav('dashboard'); }} style={{ position: 'relative' }}>
               Dashboard
               {unreadCount > 0 && (
                 <span style={{
@@ -113,16 +125,16 @@ function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
                 }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
               )}
             </a>
-            <a href="#" onClick={(e) => { e.preventDefault(); setPage('claim'); }} style={{ fontSize: '0.8rem' }}>Claim</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); nav('claim'); }}>Claim</a>
             {user.email === ADMIN_EMAIL && (
-              <a href="#" onClick={(e) => { e.preventDefault(); setPage('admin-codes'); }} style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Admin</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); nav('admin-codes'); }} style={{ color: 'var(--accent)' }}>Admin</a>
             )}
-            <button onClick={onLogout}>Log Out</button>
+            <button onClick={() => { onLogout(); setMenuOpen(false); }}>Log Out</button>
           </>
         ) : (
           <>
-            <button className="btn btn-sm btn-secondary" onClick={() => setPage('login')}>Log In</button>
-            <button className="btn btn-sm btn-primary" onClick={() => setPage('signup')}>Sign Up</button>
+            <button className="btn btn-sm btn-secondary" onClick={() => nav('login')}>Log In</button>
+            <button className="btn btn-sm btn-primary" onClick={() => nav('signup')}>Sign Up</button>
           </>
         )}
       </div>
@@ -1041,7 +1053,7 @@ function BookingRequestModal({ club, user, onClose, onSent }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+      <div className="modal-content card" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', position: 'relative' }}>
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Request to Book</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{club.name} — {club.city}, {club.state}</p>

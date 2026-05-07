@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>StagePass — Tour. Perform. Get Discovered.</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#e84393" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="StagePass" />
+<meta name="description" content="The platform for exotic dancers to build touring schedules across strip clubs nationwide." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
@@ -62,6 +69,13 @@ a { color: #e84393; text-decoration: none; }
   font-family: inherit;
 }
 .navbar-links a:hover, .navbar-links button:hover { color: var(--text); }
+
+/* Mobile hamburger */
+.hamburger {
+  display: none; background: none; border: none; cursor: pointer;
+  padding: 4px; color: var(--text-muted); font-size: 1.5rem;
+  z-index: 110;
+}
 
 /* Buttons */
 .btn {
@@ -531,19 +545,76 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-b
   pointer-events: none;
 }
 
-/* Responsive */
+/* ─── Mobile-first responsive ─── */
+
+/* Touch-friendly: bigger tap targets everywhere */
+@media (hover: none) and (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; padding: 0.5rem 1rem; }
+  .tab { min-height: 44px; padding: 0.6rem 1rem; }
+  input, textarea, select { min-height: 44px; font-size: 16px; /* prevents iOS zoom */ }
+  .carousel-arrow { width: 40px; height: 40px; }
+  .media-thumb-actions { opacity: 1; } /* always visible on touch */
+}
+
+/* Tablets and below */
 @media (max-width: 768px) {
   .hero h1 { font-size: 2.2rem; }
+  .hero { padding: 3rem 1.25rem 2.5rem; }
+  .hero p { font-size: 1rem; }
   .navbar { padding: 0.75rem 1rem; }
+  .hamburger { display: block; }
+  .navbar-links {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.97); flex-direction: column;
+    justify-content: center; align-items: center; gap: 1.5rem; z-index: 105;
+  }
+  .navbar-links.open { display: flex; }
+  .navbar-links a, .navbar-links button { font-size: 1.2rem; }
+  .navbar-links .btn { width: 200px; text-align: center; }
   .club-grid { grid-template-columns: 1fr; }
   .dancer-grid { grid-template-columns: 1fr 1fr; }
   .filter-bar { flex-direction: column; }
   .filter-bar select, .filter-bar input { width: 100%; max-width: none; }
-  .tab-bar { overflow-x: auto; }
+  .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0; }
+  .tab { white-space: nowrap; flex-shrink: 0; }
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+  .section { padding: 2rem 1rem; }
+  .section-header h2 { font-size: 1.5rem; }
+  .dashboard { padding: 1.5rem 1rem; }
+  .dashboard h2 { font-size: 1.4rem; }
+  .card { padding: 1rem; }
+  .auth-container { padding: 1.5rem 1rem; margin: 2rem auto; }
+  .modal-content {
+    max-width: 95vw !important; max-height: 90vh; overflow-y: auto;
+    margin: 1rem;
+  }
+  .club-detail-card { width: 95vw; }
+  .tour-stop { flex-wrap: wrap; }
+  /* Forms in tour builder / booking */
+  .card [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
 }
+
+/* Phones */
 @media (max-width: 480px) {
+  .hero h1 { font-size: 1.8rem; }
+  .hero p { font-size: 0.9rem; margin-bottom: 1.5rem; }
   .dancer-grid { grid-template-columns: 1fr; }
+  .dancer-avatar { height: 160px; }
+  .tour-summary { grid-template-columns: 1fr !important; }
+  .navbar-brand { font-size: 1.2rem; }
+  .split-title { font-size: 1.3rem; }
+
+  /* Stack 2-column form grids to 1 column */
+  [style*="gridTemplateColumns"] { grid-template-columns: 1fr !important; }
+}
+
+/* Safe area insets for notch phones */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .navbar { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+  body { padding-bottom: env(safe-area-inset-bottom); }
 }
 </style>
 </head>
@@ -551,5 +622,13 @@ label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-b
 <div id="root"></div>
 <script>window.__MAPBOX_TOKEN = "MAPBOX_TOKEN_PLACEHOLDER";</script>
 <script type="module" src="/app.js"></script>
+<script>
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>

@@ -114,24 +114,51 @@ function useNotifications(user) {
   return { notifications, unreadCount, markAllRead, reload: loadNotifications };
 }
 function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const nav = (pg) => {
+    setPage(pg);
+    setMenuOpen(false);
+  };
   return /* @__PURE__ */ jsxs("nav", { className: "navbar", children: [
-    /* @__PURE__ */ jsxs("div", { className: "navbar-brand", style: { cursor: "pointer" }, onClick: () => setPage("landing"), children: [
+    /* @__PURE__ */ jsxs("div", { className: "navbar-brand", style: { cursor: "pointer" }, onClick: () => nav("landing"), children: [
       "Stage",
-      /* @__PURE__ */ jsx("span", { className: "green", children: "Pass" })
+      /* @__PURE__ */ jsx("span", { className: "green", children: "Pass" }),
+      unreadCount > 0 && /* @__PURE__ */ jsx("span", { style: {
+        marginLeft: "6px",
+        background: "var(--danger)",
+        color: "#fff",
+        fontSize: "0.6rem",
+        fontWeight: 800,
+        borderRadius: "50%",
+        width: "18px",
+        height: "18px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }, children: unreadCount > 9 ? "9+" : unreadCount })
     ] }),
-    /* @__PURE__ */ jsxs("div", { className: "navbar-links", children: [
+    /* @__PURE__ */ jsx(
+      "button",
+      {
+        className: "hamburger",
+        onClick: () => setMenuOpen(!menuOpen),
+        "aria-label": "Menu",
+        children: menuOpen ? "\u2715" : "\u2630"
+      }
+    ),
+    /* @__PURE__ */ jsxs("div", { className: `navbar-links${menuOpen ? " open" : ""}`, children: [
       /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
         e.preventDefault();
-        setPage("clubs");
+        nav("clubs");
       }, children: "Clubs" }),
       /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
         e.preventDefault();
-        setPage("dancers");
+        nav("dancers");
       }, children: "Dancers" }),
       user ? /* @__PURE__ */ jsxs(Fragment, { children: [
         /* @__PURE__ */ jsxs("a", { href: "#", onClick: (e) => {
           e.preventDefault();
-          setPage("dashboard");
+          nav("dashboard");
         }, style: { position: "relative" }, children: [
           "Dashboard",
           unreadCount > 0 && /* @__PURE__ */ jsx("span", { style: {
@@ -152,16 +179,19 @@ function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
         ] }),
         /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
           e.preventDefault();
-          setPage("claim");
-        }, style: { fontSize: "0.8rem" }, children: "Claim" }),
+          nav("claim");
+        }, children: "Claim" }),
         user.email === ADMIN_EMAIL && /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
           e.preventDefault();
-          setPage("admin-codes");
-        }, style: { fontSize: "0.8rem", color: "var(--accent)" }, children: "Admin" }),
-        /* @__PURE__ */ jsx("button", { onClick: onLogout, children: "Log Out" })
+          nav("admin-codes");
+        }, style: { color: "var(--accent)" }, children: "Admin" }),
+        /* @__PURE__ */ jsx("button", { onClick: () => {
+          onLogout();
+          setMenuOpen(false);
+        }, children: "Log Out" })
       ] }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsx("button", { className: "btn btn-sm btn-secondary", onClick: () => setPage("login"), children: "Log In" }),
-        /* @__PURE__ */ jsx("button", { className: "btn btn-sm btn-primary", onClick: () => setPage("signup"), children: "Sign Up" })
+        /* @__PURE__ */ jsx("button", { className: "btn btn-sm btn-secondary", onClick: () => nav("login"), children: "Log In" }),
+        /* @__PURE__ */ jsx("button", { className: "btn btn-sm btn-primary", onClick: () => nav("signup"), children: "Sign Up" })
       ] })
     ] })
   ] });
@@ -976,7 +1006,7 @@ function BookingRequestModal({ club, user, onClose, onSent }) {
       setSending(false);
     }
   };
-  return /* @__PURE__ */ jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxs("div", { className: "modal-content", onClick: (e) => e.stopPropagation(), style: { maxWidth: "480px" }, children: [
+  return /* @__PURE__ */ jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxs("div", { className: "modal-content card", onClick: (e) => e.stopPropagation(), style: { maxWidth: "480px", position: "relative" }, children: [
     /* @__PURE__ */ jsx("button", { className: "modal-close", onClick: onClose, children: "\u2715" }),
     /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }, children: "Request to Book" }),
     /* @__PURE__ */ jsxs("p", { style: { fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }, children: [
