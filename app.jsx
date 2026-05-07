@@ -147,7 +147,7 @@ function Landing({ setPage }) {
       <div className="hero">
         <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: '1.25rem' }}>
           Build Your Tour.<br />
-          <span style={{ color: 'var(--text-dim)', fontSize: '0.4em', fontWeight: 400, letterSpacing: '0.1em' }}>or</span><br />
+          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>or</span><br />
           <span style={{ color: 'var(--accent)', fontFamily: "'Dancing Script', cursive", fontSize: '1.15em' }}>Join The <span style={{ color: 'var(--success)' }}>$</span>howcase.</span>
         </h1>
         <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', maxWidth: '560px', margin: '0 auto 2rem' }}>
