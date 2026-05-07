@@ -831,7 +831,7 @@ function AuthForm({ mode, setPage, onAuth }) {
     ] }) })
   ] });
 }
-var MAPBOX_TOKEN = "pk.eyJ1Ijoic3RhZ2VwYXNzIiwiYSI6ImNtOTR4Z3B6MjA4OHkya3B3YnQ5ZG9xdGcifQ.placeholder";
+var MAPBOX_TOKEN = window.__MAPBOX_TOKEN || "";
 async function geocodeAddress(address) {
   try {
     const encoded = encodeURIComponent(address);

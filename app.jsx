@@ -877,7 +877,8 @@ function AuthForm({ mode, setPage, onAuth }) {
 
 // ─── Tour Builder ───
 // MapBox token (free tier: 100k requests/month)
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3RhZ2VwYXNzIiwiYSI6ImNtOTR4Z3B6MjA4OHkya3B3YnQ5ZG9xdGcifQ.placeholder';
+// MapBox token loaded from index.html (set via Vercel env var)
+const MAPBOX_TOKEN = window.__MAPBOX_TOKEN || '';
 
 // Geocode an address to lat/lng using MapBox
 async function geocodeAddress(address) {
