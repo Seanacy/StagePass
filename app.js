@@ -58,78 +58,38 @@ var US_STATES = [
   "Wisconsin",
   "Wyoming"
 ];
-var SEED_CLUBS = [
-  // Florida
-  { name: "Tootsie's Cabaret", city: "Miami", state: "Florida", address: "150 NW 183rd St, Miami Gardens, FL 33169", phone: "(305) 651-5822", type: "Full Nude", size: "Large" },
-  { name: "Scarlett's Cabaret", city: "Miami", state: "Florida", address: "2920 SW 30th Ave, Hallandale Beach, FL 33009", phone: "(954) 457-5765", type: "Full Nude", size: "Large" },
-  { name: "Mons Venus", city: "Tampa", state: "Florida", address: "2040 N Dale Mabry Hwy, Tampa, FL 33607", phone: "(813) 875-6667", type: "Full Nude", size: "Medium" },
-  { name: "Deja Vu Tampa", city: "Tampa", state: "Florida", address: "6314 S Dale Mabry Hwy, Tampa, FL 33611", phone: "(813) 831-7700", type: "Full Nude", size: "Medium" },
-  { name: "Rachel's Orlando", city: "Orlando", state: "Florida", address: "8401 S Orange Blossom Trl, Orlando, FL 32809", phone: "(407) 857-8825", type: "Full Nude", size: "Large" },
-  { name: "Lido Cabaret", city: "Jacksonville", state: "Florida", address: "5535 Philips Hwy, Jacksonville, FL 32207", phone: "(904) 733-3330", type: "Bikini", size: "Medium" },
-  // Texas
-  { name: "XTC Cabaret", city: "Houston", state: "Texas", address: "7530 N Sam Houston Pkwy E, Humble, TX 77396", phone: "(281) 821-8099", type: "Full Nude", size: "Large" },
-  { name: "Baby Dolls", city: "Dallas", state: "Texas", address: "10250 Shady Trail, Dallas, TX 75220", phone: "(214) 358-8tried ", type: "Full Nude", size: "Large" },
-  { name: "Perfect 10", city: "Dallas", state: "Texas", address: "10477 Composite Dr, Dallas, TX 75220", phone: "(214) 630-0906", type: "Full Nude", size: "Medium" },
-  { name: "Palazio Cabaret", city: "Austin", state: "Texas", address: "401 E Highland Mall Blvd, Austin, TX 78752", phone: "(512) 467-8822", type: "Bikini", size: "Medium" },
-  { name: "Sugar's", city: "Houston", state: "Texas", address: "4540 Bissonnet St, Houston, TX 77401", phone: "(713) 668-2781", type: "Full Nude", size: "Large" },
-  { name: "Rick's Cabaret", city: "San Antonio", state: "Texas", address: "10030 Luminance, San Antonio, TX 78249", phone: "(210) 408-2535", type: "Full Nude", size: "Medium" },
-  // Georgia
-  { name: "Magic City", city: "Atlanta", state: "Georgia", address: "241 Forsyth St SW, Atlanta, GA 30303", phone: "(404) 331-4799", type: "Full Nude", size: "Large" },
-  { name: "Cheetah Lounge", city: "Atlanta", state: "Georgia", address: "887 Spring St NW, Atlanta, GA 30308", phone: "(404) 892-3037", type: "Full Nude", size: "Large" },
-  { name: "Allure", city: "Atlanta", state: "Georgia", address: "2788 Metropolitan Pkwy SW, Atlanta, GA 30315", phone: "(404) 209-9798", type: "Full Nude", size: "Medium" },
-  { name: "Onyx", city: "Atlanta", state: "Georgia", address: "2801 Metropolitan Pkwy SW, Atlanta, GA 30315", phone: "(404) 209-0990", type: "Full Nude", size: "Large" },
-  // Nevada
-  { name: "Spearmint Rhino", city: "Las Vegas", state: "Nevada", address: "3340 S Highland Dr, Las Vegas, NV 89109", phone: "(702) 796-3600", type: "Full Nude", size: "Large" },
-  { name: "Sapphire", city: "Las Vegas", state: "Nevada", address: "3025 Sammy Davis Jr Dr, Las Vegas, NV 89109", phone: "(702) 796-6000", type: "Full Nude", size: "Large" },
-  { name: "Crazy Horse III", city: "Las Vegas", state: "Nevada", address: "3525 W Russell Rd, Las Vegas, NV 89118", phone: "(702) 673-1700", type: "Full Nude", size: "Large" },
-  { name: "Deja Vu Showgirls", city: "Las Vegas", state: "Nevada", address: "3247 Sammy Davis Jr Dr, Las Vegas, NV 89109", phone: "(702) 894-4167", type: "Full Nude", size: "Medium" },
-  // New York
-  { name: "Sapphire 60", city: "New York", state: "New York", address: "20 W 20th St, New York, NY 10011", phone: "(212) 206-8188", type: "Topless", size: "Medium" },
-  { name: "Rick's Cabaret NYC", city: "New York", state: "New York", address: "50 W 33rd St, New York, NY 10001", phone: "(212) 279-8800", type: "Topless", size: "Large" },
-  { name: "Hustler Club NYC", city: "New York", state: "New York", address: "641 W 51st St, New York, NY 10019", phone: "(212) 247-2460", type: "Topless", size: "Large" },
-  // California
-  { name: "Seventh Veil", city: "Los Angeles", state: "California", address: "7180 Sunset Blvd, Hollywood, CA 90046", phone: "(323) 851-7447", type: "Full Nude", size: "Medium" },
-  { name: "Deja Vu Hollywood", city: "Los Angeles", state: "California", address: "7969 Santa Monica Blvd, Los Angeles, CA 90046", phone: "(323) 656-6461", type: "Full Nude", size: "Medium" },
-  { name: "Gold Club SF", city: "San Francisco", state: "California", address: "650 Howard St, San Francisco, CA 94105", phone: "(415) 536-0300", type: "Full Nude", size: "Large" },
-  { name: "Centerfolds", city: "San Francisco", state: "California", address: "391 Broadway, San Francisco, CA 94133", phone: "(415) 677-7625", type: "Full Nude", size: "Medium" },
-  // Illinois
-  { name: "Admirals Theatre", city: "Chicago", state: "Illinois", address: "3940 W Lawrence Ave, Chicago, IL 60625", phone: "(773) 478-8263", type: "Full Nude", size: "Medium" },
-  { name: "VIP's Gentlemen's Club", city: "Chicago", state: "Illinois", address: "1621 N Harlem Ave, Elmwood Park, IL 60707", phone: "(708) 452-6400", type: "Full Nude", size: "Medium" },
-  // Arizona
-  { name: "Bourbon Street Circus", city: "Phoenix", state: "Arizona", address: "4341 W Thomas Rd, Phoenix, AZ 85031", phone: "(602) 233-8879", type: "Full Nude", size: "Medium" },
-  { name: "Hi-Liter", city: "Phoenix", state: "Arizona", address: "1620 N Black Canyon Hwy, Phoenix, AZ 85009", phone: "(602) 254-1601", type: "Full Nude", size: "Large" },
-  { name: "Skin Cabaret", city: "Scottsdale", state: "Arizona", address: "4240 N Craftsman Ct, Scottsdale, AZ 85251", phone: "(480) 947-7456", type: "Bikini", size: "Medium" },
-  // North Carolina
-  { name: "Blush", city: "Charlotte", state: "North Carolina", address: "3500 S Blvd, Charlotte, NC 28209", phone: "(704) 527-0808", type: "Topless", size: "Medium" },
-  { name: "Uptown Cabaret", city: "Charlotte", state: "North Carolina", address: "3218 S Blvd, Charlotte, NC 28209", phone: "(704) 523-3377", type: "Topless", size: "Large" },
-  // Louisiana
-  { name: "Rick's Cabaret NOLA", city: "New Orleans", state: "Louisiana", address: "315 Bourbon St, New Orleans, LA 70130", phone: "(504) 524-4222", type: "Full Nude", size: "Medium" },
-  { name: "Hustler Club NOLA", city: "New Orleans", state: "Louisiana", address: "225 Bourbon St, New Orleans, LA 70130", phone: "(504) 568-1313", type: "Topless", size: "Large" },
-  // Ohio
-  { name: "Diamond Fox", city: "Columbus", state: "Ohio", address: "886 W Broad St, Columbus, OH 43222", phone: "(614) 228-0200", type: "Full Nude", size: "Medium" },
-  // Michigan
-  { name: "Bouzouki", city: "Detroit", state: "Michigan", address: "432 Monroe St, Detroit, MI 48226", phone: "(313) 964-5744", type: "Full Nude", size: "Large" },
-  { name: "Flight Club", city: "Detroit", state: "Michigan", address: "29709 Michigan Ave, Inkster, MI 48141", phone: "(734) 721-5540", type: "Full Nude", size: "Medium" },
-  // Colorado
-  { name: "Shotgun Willie's", city: "Denver", state: "Colorado", address: "490 S Colorado Blvd, Denver, CO 80246", phone: "(303) 399-2110", type: "Full Nude", size: "Large" },
-  { name: "Diamond Cabaret", city: "Denver", state: "Colorado", address: "1222 Glenarm Pl, Denver, CO 80204", phone: "(303) 571-4242", type: "Full Nude", size: "Medium" },
-  // Tennessee
-  { name: "Deja Vu Nashville", city: "Nashville", state: "Tennessee", address: "218 Printers Alley, Nashville, TN 37201", phone: "(615) 244-7256", type: "Topless", size: "Medium" },
-  // Washington
-  { name: "Deja Vu Seattle", city: "Seattle", state: "Washington", address: "1538 Western Ave, Seattle, WA 98101", phone: "(206) 624-5610", type: "Full Nude", size: "Medium" },
-  // Oregon
-  { name: "Casa Diablo", city: "Portland", state: "Oregon", address: "2839 NW St Helens Rd, Portland, OR 97210", phone: "(503) 222-6600", type: "Full Nude", size: "Small" },
-  { name: "Acropolis Steakhouse", city: "Portland", state: "Oregon", address: "8325 SE McLoughlin Blvd, Portland, OR 97202", phone: "(503) 231-9611", type: "Full Nude", size: "Medium" },
-  // New Jersey
-  { name: "Satin Dolls", city: "Lodi", state: "New Jersey", address: "230 NJ-17, Lodi, NJ 07644", phone: "(201) 845-2113", type: "Topless", size: "Large" },
-  // Pennsylvania
-  { name: "Club Risque", city: "Philadelphia", state: "Pennsylvania", address: "1700 S Columbus Blvd, Philadelphia, PA 19148", phone: "(215) 468-2010", type: "Full Nude", size: "Large" },
-  { name: "Cheerleaders", city: "Philadelphia", state: "Pennsylvania", address: "2740 S Front St, Philadelphia, PA 19148", phone: "(215) 218-8400", type: "Full Nude", size: "Medium" },
-  // South Carolina
-  { name: "Platinum Plus", city: "Columbia", state: "South Carolina", address: "820 Harden St, Columbia, SC 29205", phone: "(803) 254-1000", type: "Full Nude", size: "Medium" },
-  // Maryland
-  { name: "Norma Jean's", city: "Baltimore", state: "Maryland", address: "5056 Washington Blvd, Halethorpe, MD 21227", phone: "(410) 789-8118", type: "Full Nude", size: "Medium" }
-].map((c, i) => ({ ...c, id: `club_${i + 1}` }));
+var _clubsCache = null;
+var _clubsFetching = false;
+var _clubsListeners = [];
+async function getClubs() {
+  if (_clubsCache) return _clubsCache;
+  if (_clubsFetching) {
+    return new Promise((resolve) => _clubsListeners.push(resolve));
+  }
+  _clubsFetching = true;
+  const { data, error } = await supabase.from("clubs").select("*").order("state").order("name");
+  _clubsCache = error ? [] : data;
+  _clubsFetching = false;
+  _clubsListeners.forEach((cb) => cb(_clubsCache));
+  _clubsListeners = [];
+  return _clubsCache;
+}
+function useClubs() {
+  const [clubs, setClubs] = useState(_clubsCache || []);
+  const [loading, setLoading] = useState(!_clubsCache);
+  useEffect(() => {
+    if (_clubsCache) {
+      setClubs(_clubsCache);
+      setLoading(false);
+      return;
+    }
+    getClubs().then((c) => {
+      setClubs(c);
+      setLoading(false);
+    });
+  }, []);
+  return { clubs, loading };
+}
 function Navbar({ user, page, setPage, onLogout, role }) {
   return /* @__PURE__ */ jsxs("nav", { className: "navbar", children: [
     /* @__PURE__ */ jsxs("div", { className: "navbar-brand", style: { cursor: "pointer" }, onClick: () => setPage("landing"), children: [
@@ -159,7 +119,8 @@ function Navbar({ user, page, setPage, onLogout, role }) {
   ] });
 }
 function Landing({ setPage }) {
-  const uniqueStates = [...new Set(SEED_CLUBS.map((c) => c.state))].length;
+  const { clubs } = useClubs();
+  const uniqueStates = [...new Set(clubs.map((c) => c.state))].length;
   return /* @__PURE__ */ jsxs("div", { children: [
     /* @__PURE__ */ jsxs("div", { className: "hero", children: [
       /* @__PURE__ */ jsxs("h1", { style: { fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 900, lineHeight: 1.1, marginBottom: "1.25rem" }, children: [
@@ -181,7 +142,7 @@ function Landing({ setPage }) {
       /* @__PURE__ */ jsxs("div", { style: { display: "flex", justifyContent: "center", gap: "3rem", marginTop: "3rem", flexWrap: "wrap" }, children: [
         /* @__PURE__ */ jsxs("div", { style: { textAlign: "center" }, children: [
           /* @__PURE__ */ jsxs("div", { style: { fontSize: "2rem", fontWeight: 900, color: "var(--primary)" }, children: [
-            SEED_CLUBS.length,
+            clubs.length,
             "+"
           ] }),
           /* @__PURE__ */ jsx("div", { style: { fontSize: "0.8rem", color: "var(--text-dim)" }, children: "Clubs Listed" })
@@ -207,7 +168,7 @@ function Landing({ setPage }) {
         /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "0.5rem", fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }, children: [
           /* @__PURE__ */ jsxs("div", { children: [
             "\u2713 ",
-            SEED_CLUBS.length,
+            clubs.length,
             "+ clubs across ",
             uniqueStates,
             " states"
@@ -276,12 +237,13 @@ function Landing({ setPage }) {
   ] });
 }
 function ClubDirectory({ setPage, user }) {
+  const { clubs: allClubs, loading: clubsLoading } = useClubs();
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
-  const states = [...new Set(SEED_CLUBS.map((c) => c.state))].sort();
-  const types = [...new Set(SEED_CLUBS.map((c) => c.type))].sort();
-  const filtered = SEED_CLUBS.filter((c) => {
+  const states = [...new Set(allClubs.map((c) => c.state))].sort();
+  const types = [...new Set(allClubs.map((c) => c.type))].sort();
+  const filtered = allClubs.filter((c) => {
     if (stateFilter && c.state !== stateFilter) return false;
     if (typeFilter && c.type !== typeFilter) return false;
     if (search) {
@@ -294,7 +256,7 @@ function ClubDirectory({ setPage, user }) {
     /* @__PURE__ */ jsxs("div", { className: "section-header", children: [
       /* @__PURE__ */ jsx("h2", { children: "Club Directory" }),
       /* @__PURE__ */ jsxs("p", { children: [
-        SEED_CLUBS.length,
+        allClubs.length,
         " clubs across ",
         states.length,
         " states"
@@ -518,7 +480,7 @@ function AvailabilityDisplay({ days, timeStart, timeEnd }) {
 function findClubInSystem(clubName) {
   if (!clubName) return null;
   const lower = clubName.toLowerCase().trim();
-  return SEED_CLUBS.find((c) => c.name.toLowerCase() === lower) || null;
+  return (_clubsCache || []).find((c) => c.name.toLowerCase() === lower) || null;
 }
 function DancerShowcase() {
   const [dancers, setDancers] = useState([]);
@@ -692,13 +654,14 @@ function AuthForm({ mode, setPage, onAuth }) {
   ] });
 }
 function TourBuilder({ user }) {
+  const { clubs: allClubs } = useClubs();
   const [tourStops, setTourStops] = useState([]);
   const [selectedClub, setSelectedClub] = useState("");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
   const addStop = () => {
     if (!selectedClub || !date) return;
-    const club = SEED_CLUBS.find((c) => c.id === selectedClub);
+    const club = allClubs.find((c) => c.id === selectedClub);
     if (!club) return;
     setTourStops((prev) => [...prev, {
       id: Date.now(),
@@ -724,7 +687,7 @@ function TourBuilder({ user }) {
           /* @__PURE__ */ jsx("label", { children: "Club" }),
           /* @__PURE__ */ jsxs("select", { value: selectedClub, onChange: (e) => setSelectedClub(e.target.value), children: [
             /* @__PURE__ */ jsx("option", { value: "", children: "Select a club..." }),
-            SEED_CLUBS.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name)).map((c) => /* @__PURE__ */ jsxs("option", { value: c.id, children: [
+            allClubs.sort((a, b) => a.state.localeCompare(b.state) || a.name.localeCompare(b.name)).map((c) => /* @__PURE__ */ jsxs("option", { value: c.id, children: [
               c.name,
               " \u2014 ",
               c.city,
