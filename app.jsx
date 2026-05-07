@@ -350,54 +350,211 @@ function ClubDirectory({ setPage, user }) {
   );
 }
 
-// ─── Dancer Showcase ───
-function DancerShowcase() {
-  // For now — seed data until real signups happen
-  const sampleDancers = [
-    { id: 1, name: 'Diamond', city: 'Miami', state: 'Florida', homeClub: "Tootsie's Cabaret", socials: [{ platform: 'IG', handle: '@diamond' }, { platform: 'Twitter', handle: '@diamondx' }] },
-    { id: 2, name: 'Coco', city: 'Atlanta', state: 'Georgia', homeClub: 'Magic City', socials: [{ platform: 'IG', handle: '@cocoatl' }] },
-    { id: 3, name: 'Jade', city: 'Las Vegas', state: 'Nevada', homeClub: 'Spearmint Rhino', socials: [{ platform: 'IG', handle: '@jadelv' }, { platform: 'Linktree', handle: 'jade.lv' }] },
-    { id: 4, name: 'Sapphire', city: 'Houston', state: 'Texas', homeClub: 'XTC Cabaret', socials: [{ platform: 'IG', handle: '@sapphiretx' }] },
-    { id: 5, name: 'Raven', city: 'New York', state: 'New York', homeClub: "Rick's Cabaret NYC", socials: [{ platform: 'IG', handle: '@ravennyc' }, { platform: 'OnlyFans', handle: 'ravenx' }] },
-    { id: 6, name: 'Luna', city: 'Dallas', state: 'Texas', homeClub: 'Baby Dolls', socials: [{ platform: 'IG', handle: '@lunadallas' }] },
+// ─── Media Carousel (used inside dancer cards) ───
+function MediaCarousel({ photos, videos }) {
+  const [mediaMode, setMediaMode] = useState('photos'); // 'photos' or 'videos'
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const items = mediaMode === 'photos' ? photos : videos;
+  const hasVideos = videos && videos.length > 0;
+  const hasPhotos = photos && photos.length > 0;
+
+  // Reset index when switching modes
+  useEffect(() => { setCurrentIndex(0); }, [mediaMode]);
+
+  const goNext = (e) => { e.stopPropagation(); setCurrentIndex(i => (i + 1) % items.length); };
+  const goPrev = (e) => { e.stopPropagation(); setCurrentIndex(i => (i - 1 + items.length) % items.length); };
+
+  return (
+    <div className="carousel-wrapper">
+      {/* Media display */}
+      <div className="carousel-viewport">
+        {items.length === 0 ? (
+          <div className="carousel-empty">
+            {mediaMode === 'photos' ? '📷' : '🎬'}
+            <span>{mediaMode === 'photos' ? 'No photos yet' : 'No videos yet'}</span>
+          </div>
+        ) : mediaMode === 'photos' ? (
+          <img src={items[currentIndex]?.url} alt="" className="carousel-img" />
+        ) : (
+          <video src={items[currentIndex]?.url} className="carousel-video" controls playsInline />
+        )}
+
+        {/* Arrows (only if more than 1 item) */}
+        {items.length > 1 && (
+          <>
+            <button className="carousel-arrow carousel-arrow-left" onClick={goPrev}>‹</button>
+            <button className="carousel-arrow carousel-arrow-right" onClick={goNext}>›</button>
+          </>
+        )}
+      </div>
+
+      {/* Dots */}
+      {items.length > 1 && (
+        <div className="carousel-dots">
+          {items.map((_, i) => (
+            <span key={i} className={`carousel-dot ${i === currentIndex ? 'active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(i); }} />
+          ))}
+        </div>
+      )}
+
+      {/* Photo / Video toggle */}
+      {(hasPhotos || hasVideos) && hasVideos && (
+        <div className="carousel-toggle">
+          <button className={`toggle-btn ${mediaMode === 'photos' ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setMediaMode('photos'); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Photos
+          </button>
+          <button className={`toggle-btn ${mediaMode === 'videos' ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setMediaMode('videos'); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            Videos
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Social Icon Tray ───
+function SocialIconTray({ instagram, twitter, onlyfans, linktree }) {
+  const socials = [
+    { url: instagram, label: 'Instagram', color: '#E1306C',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg> },
+    { url: twitter, label: 'X / Twitter', color: '#1DA1F2',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> },
+    { url: onlyfans, label: 'OnlyFans', color: '#00AFF0',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 18.6a6.6 6.6 0 110-13.2 6.6 6.6 0 010 13.2zm0-10.8a4.2 4.2 0 100 8.4 4.2 4.2 0 000-8.4zm0 6.6a2.4 2.4 0 110-4.8 2.4 2.4 0 010 4.8z"/></svg> },
+    { url: linktree, label: 'Links', color: 'var(--success)',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> },
   ];
 
-  const [stateFilter, setStateFilter] = useState('');
-  const states = [...new Set(sampleDancers.map(d => d.state))].sort();
+  const activeSocials = socials.filter(s => s.url);
+  if (activeSocials.length === 0) return null;
 
-  const filtered = stateFilter ? sampleDancers.filter(d => d.state === stateFilter) : sampleDancers;
+  return (
+    <div className="social-icon-tray">
+      {activeSocials.map((s, i) => (
+        <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"
+          className="social-icon-btn" style={{ color: s.color }} title={s.label}
+          onClick={(e) => e.stopPropagation()}>
+          {s.icon}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// ─── Dancer Showcase ───
+function DancerShowcase() {
+  const [dancers, setDancers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stateFilter, setStateFilter] = useState('');
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    loadDancers();
+  }, []);
+
+  const loadDancers = async () => {
+    try {
+      // Fetch dancers
+      const { data: dancerRows, error: dErr } = await supabase
+        .from('dancers')
+        .select('*')
+        .order('stage_name');
+
+      if (dErr) throw dErr;
+
+      // Fetch all media
+      const { data: mediaRows, error: mErr } = await supabase
+        .from('dancer_media')
+        .select('*')
+        .order('display_order');
+
+      if (mErr) throw mErr;
+
+      // Group media by dancer
+      const mediaByDancer = {};
+      (mediaRows || []).forEach(m => {
+        if (!mediaByDancer[m.dancer_id]) mediaByDancer[m.dancer_id] = { photos: [], videos: [] };
+        if (m.media_type === 'photo') mediaByDancer[m.dancer_id].photos.push(m);
+        else mediaByDancer[m.dancer_id].videos.push(m);
+      });
+
+      // Merge
+      const merged = (dancerRows || []).map(d => ({
+        ...d,
+        photos: mediaByDancer[d.id]?.photos || [],
+        videos: mediaByDancer[d.id]?.videos || [],
+      }));
+
+      setDancers(merged);
+    } catch (err) {
+      console.error('Failed to load dancers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const states = [...new Set(dancers.map(d => d.state).filter(Boolean))].sort();
+
+  const filtered = dancers.filter(d => {
+    if (stateFilter && d.state !== stateFilter) return false;
+    if (search) {
+      const s = search.toLowerCase();
+      return (d.stage_name || '').toLowerCase().includes(s) ||
+        (d.city || '').toLowerCase().includes(s) ||
+        (d.state || '').toLowerCase().includes(s);
+    }
+    return true;
+  });
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>Loading dancers...</div>;
 
   return (
     <div className="section">
       <div className="section-header">
-        <h2>Dancer Showcase</h2>
+        <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent)', marginBottom: '0.5rem' }}>THE $HOWCASE</div>
+        <h2>Where The Money <span style={{ color: 'var(--accent)' }}>Looks First</span></h2>
         <p>Discover dancers from across the country</p>
       </div>
 
       <div className="filter-bar">
+        <input placeholder="Search by name, city..." value={search} onChange={e => setSearch(e.target.value)} />
         <select value={stateFilter} onChange={e => setStateFilter(e.target.value)}>
           <option value="">All States</option>
           {states.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      <div className="dancer-grid">
-        {filtered.map(dancer => (
-          <div key={dancer.id} className="dancer-card">
-            <div className="dancer-avatar">💃</div>
-            <div className="dancer-info">
-              <div className="dancer-name">{dancer.name}</div>
-              <div className="dancer-location">{dancer.city}, {dancer.state}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Home: {dancer.homeClub}</div>
-              <div className="dancer-socials">
-                {dancer.socials.map((s, i) => (
-                  <span key={i} className="social-link">{s.platform}: {s.handle}</span>
-                ))}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-dim)' }}>
+          {dancers.length === 0
+            ? 'No dancers in the showcase yet. Be the first!'
+            : 'No dancers match your search.'}
+        </div>
+      ) : (
+        <div className="dancer-grid">
+          {filtered.map(dancer => (
+            <div key={dancer.id} className="dancer-card">
+              <MediaCarousel photos={dancer.photos} videos={dancer.videos} />
+              <div className="dancer-info">
+                <div className="dancer-name">{dancer.stage_name}</div>
+                <div className="dancer-location">{[dancer.city, dancer.state].filter(Boolean).join(', ') || 'Location not set'}</div>
+                <SocialIconTray
+                  instagram={dancer.instagram}
+                  twitter={dancer.twitter}
+                  onlyfans={dancer.onlyfans}
+                  linktree={dancer.linktree}
+                />
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -575,18 +732,204 @@ function TourBuilder({ user }) {
 // ─── Dancer Dashboard ───
 function DancerDashboard({ user, setPage }) {
   const [tab, setTab] = useState('tours');
-  const stageName = user?.user_metadata?.stage_name || 'Dancer';
+  const [dancerProfile, setDancerProfile] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  // Profile form state
+  const [stageName, setStageName] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [homeClub, setHomeClub] = useState('');
+  const [bio, setBio] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [twitter, setTwitter] = useState('');
+  const [onlyfans, setOnlyfans] = useState('');
+  const [linktree, setLinktree] = useState('');
+
+  useEffect(() => {
+    if (user) loadProfile();
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      // Get or create dancer profile
+      let { data: dancer, error } = await supabase
+        .from('dancers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // No profile yet — create one
+        const { data: newDancer, error: createErr } = await supabase
+          .from('dancers')
+          .insert({ user_id: user.id, stage_name: user.user_metadata?.stage_name || 'New Dancer' })
+          .select()
+          .single();
+        if (createErr) throw createErr;
+        dancer = newDancer;
+      } else if (error) throw error;
+
+      setDancerProfile(dancer);
+      setStageName(dancer.stage_name || '');
+      setCity(dancer.city || '');
+      setState(dancer.state || '');
+      setHomeClub(dancer.home_club || '');
+      setBio(dancer.bio || '');
+      setInstagram(dancer.instagram || '');
+      setTwitter(dancer.twitter || '');
+      setOnlyfans(dancer.onlyfans || '');
+      setLinktree(dancer.linktree || '');
+
+      // Load media
+      const { data: media } = await supabase
+        .from('dancer_media')
+        .select('*')
+        .eq('dancer_id', dancer.id)
+        .order('display_order');
+
+      const p = (media || []).filter(m => m.media_type === 'photo');
+      const v = (media || []).filter(m => m.media_type === 'video');
+      setPhotos(p);
+      setVideos(v);
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!dancerProfile) return;
+    setSaving(true);
+    setMsg('');
+    try {
+      const { error } = await supabase
+        .from('dancers')
+        .update({
+          stage_name: stageName,
+          city, state, home_club: homeClub, bio,
+          instagram, twitter, onlyfans, linktree,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', dancerProfile.id);
+      if (error) throw error;
+      setMsg('Profile saved!');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      setMsg('Error: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadMedia = async (files, mediaType) => {
+    if (!dancerProfile || !files.length) return;
+    if (mediaType === 'video' && videos.length + files.length > 2) {
+      setMsg('Max 2 videos allowed.');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    setUploading(true);
+    setMsg('');
+    try {
+      const currentItems = mediaType === 'photo' ? photos : videos;
+      let order = currentItems.length;
+
+      for (const file of files) {
+        const ext = file.name.split('.').pop();
+        const path = `${user.id}/${mediaType}s/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+        const { error: upErr } = await supabase.storage
+          .from('dancer-media')
+          .upload(path, file, { cacheControl: '3600', upsert: false });
+        if (upErr) throw upErr;
+
+        const { data: urlData } = supabase.storage.from('dancer-media').getPublicUrl(path);
+
+        const { error: dbErr } = await supabase
+          .from('dancer_media')
+          .insert({
+            dancer_id: dancerProfile.id,
+            media_type: mediaType,
+            url: urlData.publicUrl,
+            storage_path: path,
+            display_order: order++,
+            is_main: mediaType === 'photo' && photos.length === 0 && order === 1,
+          });
+        if (dbErr) throw dbErr;
+      }
+
+      await loadProfile();
+      setMsg(`${mediaType === 'photo' ? 'Photo' : 'Video'}(s) uploaded!`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err) {
+      setMsg('Upload error: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteMedia = async (mediaItem) => {
+    try {
+      await supabase.storage.from('dancer-media').remove([mediaItem.storage_path]);
+      await supabase.from('dancer_media').delete().eq('id', mediaItem.id);
+      await loadProfile();
+      setMsg('Deleted!');
+      setTimeout(() => setMsg(''), 2000);
+    } catch (err) {
+      setMsg('Delete error: ' + err.message);
+    }
+  };
+
+  const setMainPhoto = async (mediaItem) => {
+    try {
+      // Unset all mains for this dancer
+      await supabase.from('dancer_media').update({ is_main: false }).eq('dancer_id', dancerProfile.id);
+      // Set this one
+      await supabase.from('dancer_media').update({ is_main: true }).eq('id', mediaItem.id);
+      // Also set profile_photo_url
+      await supabase.from('dancers').update({ profile_photo_url: mediaItem.url }).eq('id', dancerProfile.id);
+      await loadProfile();
+      setMsg('Main photo updated!');
+      setTimeout(() => setMsg(''), 2000);
+    } catch (err) {
+      setMsg('Error: ' + err.message);
+    }
+  };
+
+  const displayName = stageName || user?.user_metadata?.stage_name || 'Dancer';
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>Loading...</div>;
 
   return (
     <div className="dashboard">
-      <h2>Hey, {stageName}</h2>
-      <p className="subtitle">Manage your tours and profile</p>
+      <h2>Hey, {displayName}</h2>
+      <p className="subtitle">Manage your tours, media, and profile</p>
+
+      {msg && (
+        <div style={{
+          padding: '0.75rem 1rem', borderRadius: '0.5rem', marginBottom: '1.5rem',
+          background: msg.startsWith('Error') || msg.startsWith('Upload error') || msg.startsWith('Delete error')
+            ? 'rgba(255,71,87,0.15)' : 'rgba(0,184,148,0.15)',
+          color: msg.startsWith('Error') || msg.startsWith('Upload error') || msg.startsWith('Delete error')
+            ? 'var(--danger)' : 'var(--success)',
+          fontSize: '0.85rem', fontWeight: 600
+        }}>{msg}</div>
+      )}
 
       <div className="tab-bar">
         <button className={`tab ${tab === 'tours' ? 'active' : ''}`} onClick={() => setTab('tours')}>My Tours</button>
+        <button className={`tab ${tab === 'media' ? 'active' : ''}`} onClick={() => setTab('media')}>My Media</button>
         <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>My Profile</button>
       </div>
 
+      {/* ─── Tours Tab ─── */}
       {tab === 'tours' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -599,34 +942,138 @@ function DancerDashboard({ user, setPage }) {
         </div>
       )}
 
+      {/* ─── Media Tab ─── */}
+      {tab === 'media' && (
+        <div>
+          {/* Photos Section */}
+          <div className="card" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-light)' }}>
+                Photos ({photos.length})
+              </h3>
+              <label className="btn btn-sm btn-primary" style={{ cursor: 'pointer', position: 'relative' }}>
+                {uploading ? 'Uploading...' : '+ Upload Photos'}
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }}
+                  onChange={e => uploadMedia(Array.from(e.target.files), 'photo')}
+                  disabled={uploading} />
+              </label>
+            </div>
+            {photos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)', border: '1px dashed var(--border)', borderRadius: '0.75rem' }}>
+                No photos yet. Upload some to appear in the showcase!
+              </div>
+            ) : (
+              <div className="media-grid">
+                {photos.map((p) => (
+                  <div key={p.id} className="media-thumb">
+                    <img src={p.url} alt="" />
+                    {p.is_main && <span className="main-badge">MAIN</span>}
+                    <div className="media-thumb-actions">
+                      {!p.is_main && (
+                        <button onClick={() => setMainPhoto(p)} title="Set as main photo">★</button>
+                      )}
+                      <button onClick={() => deleteMedia(p)} title="Delete" className="delete-btn">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Videos Section */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--primary-light)' }}>
+                Videos ({videos.length}/2)
+              </h3>
+              <label className={`btn btn-sm btn-primary ${videos.length >= 2 ? 'disabled' : ''}`}
+                style={{ cursor: videos.length >= 2 ? 'not-allowed' : 'pointer', opacity: videos.length >= 2 ? 0.5 : 1, position: 'relative' }}>
+                {uploading ? 'Uploading...' : '+ Upload Video'}
+                <input type="file" accept="video/*" style={{ display: 'none' }}
+                  onChange={e => uploadMedia(Array.from(e.target.files), 'video')}
+                  disabled={uploading || videos.length >= 2} />
+              </label>
+            </div>
+            {videos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)', border: '1px dashed var(--border)', borderRadius: '0.75rem' }}>
+                No videos yet. You can upload up to 2 videos.
+              </div>
+            ) : (
+              <div className="media-grid">
+                {videos.map((v) => (
+                  <div key={v.id} className="media-thumb video-thumb">
+                    <video src={v.url} />
+                    <div className="video-play-overlay">▶</div>
+                    <div className="media-thumb-actions">
+                      <button onClick={() => deleteMedia(v)} title="Delete" className="delete-btn">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Profile Tab ─── */}
       {tab === 'profile' && (
         <div className="card">
           <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--primary-light)' }}>Your Profile</h3>
-          <div className="form-group">
-            <label>Stage Name</label>
-            <input defaultValue={stageName} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label>Stage Name</label>
+              <input value={stageName} onChange={e => setStageName(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Home Club</label>
+              <input value={homeClub} onChange={e => setHomeClub(e.target.value)} placeholder="Where you usually dance" />
+            </div>
+            <div className="form-group">
+              <label>City</label>
+              <input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Miami" />
+            </div>
+            <div className="form-group">
+              <label>State</label>
+              <select value={state} onChange={e => setState(e.target.value)}>
+                <option value="">Select state...</option>
+                {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="form-group">
-            <label>Home City</label>
-            <input placeholder="e.g. Miami, FL" />
-          </div>
-          <div className="form-group">
-            <label>Home Club</label>
-            <input placeholder="Where you usually dance" />
-          </div>
-          <div className="form-group">
-            <label>Instagram</label>
-            <input placeholder="@yourhandle" />
-          </div>
-          <div className="form-group">
-            <label>Linktree / Link Hub URL</label>
-            <input placeholder="https://linktr.ee/yourname" />
-          </div>
+
           <div className="form-group">
             <label>Bio</label>
-            <textarea placeholder="Tell clubs about yourself..." style={{ minHeight: '80px' }} />
+            <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell clubs about yourself..." style={{ minHeight: '80px' }} />
           </div>
-          <button className="btn btn-primary">Save Profile</button>
+
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent)', marginBottom: '0.75rem', marginTop: '0.5rem' }}>Social Links</h4>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '1rem' }}>
+            Paste your full profile URLs. Only filled-in links will show on your card.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label>Instagram URL</label>
+              <input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="https://instagram.com/yourname" />
+            </div>
+            <div className="form-group">
+              <label>Twitter / X URL</label>
+              <input value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="https://x.com/yourname" />
+            </div>
+            <div className="form-group">
+              <label>OnlyFans URL</label>
+              <input value={onlyfans} onChange={e => setOnlyfans(e.target.value)} placeholder="https://onlyfans.com/yourname" />
+            </div>
+            <div className="form-group">
+              <label>Link Hub URL</label>
+              <input value={linktree} onChange={e => setLinktree(e.target.value)} placeholder="https://linktr.ee/yourname" />
+            </div>
+          </div>
+
+          <button className="btn btn-primary" onClick={saveProfile} disabled={saving} style={{ marginTop: '0.5rem' }}>
+            {saving ? 'Saving...' : 'Save Profile'}
+          </button>
         </div>
       )}
     </div>
