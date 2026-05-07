@@ -876,42 +876,152 @@ function AuthForm({ mode, setPage, onAuth }) {
 }
 
 // ─── Tour Builder ───
+// MapBox token (free tier: 100k requests/month)
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoic3RhZ2VwYXNzIiwiYSI6ImNtOTR4Z3B6MjA4OHkya3B3YnQ5ZG9xdGcifQ.placeholder';
+
+// Geocode an address to lat/lng using MapBox
+async function geocodeAddress(address) {
+  try {
+    const encoded = encodeURIComponent(address);
+    const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`);
+    const data = await res.json();
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center;
+      return { lat, lng };
+    }
+  } catch (e) { /* silently fail */ }
+  return null;
+}
+
+// Get driving distance and duration between two points
+async function getDrivingRoute(from, to) {
+  try {
+    const res = await fetch(
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${from.lng},${from.lat};${to.lng},${to.lat}?access_token=${MAPBOX_TOKEN}`
+    );
+    const data = await res.json();
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      return {
+        distance: route.distance, // meters
+        duration: route.duration, // seconds
+      };
+    }
+  } catch (e) { /* silently fail */ }
+  return null;
+}
+
+function formatDuration(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.round((seconds % 3600) / 60);
+  if (hrs === 0) return `${mins} min`;
+  return `${hrs}h ${mins}m`;
+}
+
+function formatMiles(meters) {
+  return (meters / 1609.344).toFixed(0);
+}
+
 function TourBuilder({ user }) {
   const { clubs: allClubs } = useClubs();
   const [tourStops, setTourStops] = useState([]);
   const [selectedClub, setSelectedClub] = useState('');
   const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [routeLegs, setRouteLegs] = useState([]); // { from, to, distance, duration }
+  const [calculatingRoute, setCalculatingRoute] = useState(false);
+
+  const [customFee, setCustomFee] = useState('');
 
   const addStop = () => {
     if (!selectedClub || !date) return;
     const club = allClubs.find(c => c.id === selectedClub);
     if (!club) return;
+    // Use club's listed fee, or the dancer's custom estimate
+    const fee = club.house_fee || (customFee ? parseFloat(customFee) : null);
     setTourStops(prev => [...prev, {
       id: Date.now(),
-      club,
+      club: { ...club, house_fee: fee },
       date,
+      time,
       notes,
       status: 'pending',
+      customFee: !club.house_fee && customFee ? parseFloat(customFee) : null,
     }]);
     setSelectedClub('');
     setDate('');
+    setTime('');
     setNotes('');
+    setCustomFee('');
   };
 
   const removeStop = (id) => {
     setTourStops(prev => prev.filter(s => s.id !== id));
+    setRouteLegs([]);
   };
+
+  // Calculate routes whenever stops change (2+ stops)
+  const sortedStops = [...tourStops].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const calculateRoutes = useCallback(async () => {
+    if (sortedStops.length < 2) { setRouteLegs([]); return; }
+    setCalculatingRoute(true);
+
+    const legs = [];
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromClub = sortedStops[i].club;
+      const toClub = sortedStops[i + 1].club;
+
+      // Use stored lat/lng or geocode from address
+      let fromCoords = fromClub.lat && fromClub.lng ? { lat: fromClub.lat, lng: fromClub.lng } : null;
+      let toCoords = toClub.lat && toClub.lng ? { lat: toClub.lat, lng: toClub.lng } : null;
+
+      if (!fromCoords) {
+        const addr = `${fromClub.address || ''} ${fromClub.city}, ${fromClub.state}`;
+        fromCoords = await geocodeAddress(addr);
+      }
+      if (!toCoords) {
+        const addr = `${toClub.address || ''} ${toClub.city}, ${toClub.state}`;
+        toCoords = await geocodeAddress(addr);
+      }
+
+      if (fromCoords && toCoords) {
+        const route = await getDrivingRoute(fromCoords, toCoords);
+        legs.push({
+          from: fromClub.name,
+          to: toClub.name,
+          distance: route?.distance || 0,
+          duration: route?.duration || 0,
+        });
+      } else {
+        legs.push({ from: fromClub.name, to: toClub.name, distance: 0, duration: 0 });
+      }
+    }
+
+    setRouteLegs(legs);
+    setCalculatingRoute(false);
+  }, [tourStops.length]);
+
+  useEffect(() => {
+    if (tourStops.length >= 2) calculateRoutes();
+    else setRouteLegs([]);
+  }, [tourStops.length]);
+
+  // Tour totals
+  const totalDistance = routeLegs.reduce((sum, l) => sum + l.distance, 0);
+  const totalDuration = routeLegs.reduce((sum, l) => sum + l.duration, 0);
+  const totalFees = sortedStops.reduce((sum, s) => sum + (s.club.house_fee || 0), 0);
 
   return (
     <div className="dashboard">
       <h2>Build Your Tour</h2>
-      <p className="subtitle">Pick clubs, choose dates, and submit booking requests.</p>
+      <p className="subtitle">Pick clubs, choose dates, and see travel costs at a glance.</p>
 
       {/* Add Stop Form */}
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--primary-light)' }}>Add a Stop</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
           <div className="form-group">
             <label>Club</label>
             <select value={selectedClub} onChange={e => setSelectedClub(e.target.value)}>
@@ -925,7 +1035,33 @@ function TourBuilder({ user }) {
             <label>Date</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
+          <div className="form-group">
+            <label>Time</label>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} />
+          </div>
         </div>
+        {/* Show fee info or let dancer enter it */}
+        {selectedClub && (() => {
+          const club = allClubs.find(c => c.id === selectedClub);
+          if (club?.house_fee) {
+            return (
+              <div style={{ fontSize: '0.85rem', color: 'var(--success)', marginBottom: '0.75rem', padding: '0.5rem', background: 'rgba(76,175,80,0.08)', borderRadius: '0.5rem' }}>
+                House fee listed by club: <strong>${club.house_fee}/night</strong>
+              </div>
+            );
+          }
+          return (
+            <div className="form-group">
+              <label>House Fee (club hasn't listed one — enter your estimate)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ fontWeight: 700 }}>$</span>
+                <input type="number" value={customFee} onChange={e => setCustomFee(e.target.value)} placeholder="e.g. 40" style={{ maxWidth: '120px' }} />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>/night</span>
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="form-group">
           <label>Notes for the club (optional)</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Available for 2 nights, experienced with VIP rooms" />
@@ -933,27 +1069,79 @@ function TourBuilder({ user }) {
         <button className="btn btn-primary" onClick={addStop} disabled={!selectedClub || !date}>Add to Tour</button>
       </div>
 
+      {/* Tour Summary Stats */}
+      {sortedStops.length >= 2 && (
+        <div className="tour-summary" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem'
+        }}>
+          <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>
+              {calculatingRoute ? '...' : `${formatMiles(totalDistance)} mi`}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Total Distance</div>
+          </div>
+          <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)' }}>
+              {calculatingRoute ? '...' : formatDuration(totalDuration)}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Total Drive Time</div>
+          </div>
+          <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--danger)' }}>
+              ${totalFees}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Total House Fees</div>
+          </div>
+        </div>
+      )}
+
       {/* Tour Timeline */}
-      {tourStops.length > 0 ? (
+      {sortedStops.length > 0 ? (
         <>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Your Tour ({tourStops.length} stops)</h3>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Your Tour ({sortedStops.length} stops)</h3>
           <div className="tour-timeline">
-            {tourStops.sort((a, b) => new Date(a.date) - new Date(b.date)).map((stop, i) => (
-              <div key={stop.id} className="tour-stop">
-                <div className="tour-stop-num">{i + 1}</div>
-                <div className="tour-stop-info">
-                  <div style={{ fontWeight: 700, marginBottom: '0.15rem' }}>{stop.club.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                    {stop.club.city}, {stop.club.state} — {new Date(stop.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            {sortedStops.map((stop, i) => (
+              <React.Fragment key={stop.id}>
+                <div className="tour-stop">
+                  <div className="tour-stop-num">{i + 1}</div>
+                  <div className="tour-stop-info">
+                    <div style={{ fontWeight: 700, marginBottom: '0.15rem' }}>{stop.club.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                      {stop.club.city}, {stop.club.state} — {new Date(stop.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {stop.time && ` at ${stop.time}`}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem' }}>
+                      {stop.club.house_fee && (
+                        <span style={{ color: 'var(--danger)' }}>
+                          House fee: ${stop.club.house_fee}{stop.customFee ? ' (your estimate)' : ''}
+                        </span>
+                      )}
+                      {stop.club.address && (
+                        <span style={{ color: 'var(--text-dim)' }}>{stop.club.address}</span>
+                      )}
+                    </div>
+                    {stop.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic', marginTop: '0.25rem' }}>"{stop.notes}"</div>}
                   </div>
-                  {stop.notes && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>"{stop.notes}"</div>}
+                  <span className={`status-badge status-${stop.status}`}>{stop.status}</span>
+                  <button onClick={() => removeStop(stop.id)} style={{
+                    background: 'none', border: 'none', color: 'var(--danger)',
+                    cursor: 'pointer', fontSize: '1rem', padding: '0.25rem'
+                  }}>✕</button>
                 </div>
-                <span className={`status-badge status-${stop.status}`}>{stop.status}</span>
-                <button onClick={() => removeStop(stop.id)} style={{
-                  background: 'none', border: 'none', color: 'var(--danger)',
-                  cursor: 'pointer', fontSize: '1rem', padding: '0.25rem'
-                }}>✕</button>
-              </div>
+
+                {/* Travel leg between stops */}
+                {routeLegs[i] && routeLegs[i].distance > 0 && (
+                  <div className="tour-leg" style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.4rem 0 0.4rem 2.5rem', fontSize: '0.75rem', color: 'var(--text-dim)'
+                  }}>
+                    <span style={{ color: 'var(--primary)' }}>↓</span>
+                    <span>{formatMiles(routeLegs[i].distance)} mi</span>
+                    <span>•</span>
+                    <span>{formatDuration(routeLegs[i].duration)} drive</span>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
           <button className="btn btn-accent" style={{ marginTop: '1.5rem', width: '100%' }}>
@@ -1374,7 +1562,30 @@ function DancerDashboard({ user, setPage }) {
 // ─── Club Dashboard ───
 function ClubDashboard({ user }) {
   const [tab, setTab] = useState('requests');
+  const [clubData, setClubData] = useState(null);
+  const [houseFee, setHouseFee] = useState('');
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [feeSaved, setFeeSaved] = useState(false);
   const clubName = user?.user_metadata?.club_name || 'Your Club';
+
+  useEffect(() => {
+    // Load the club this user claimed
+    supabase.from('clubs').select('*').eq('claimed_by', user.id).single().then(({ data }) => {
+      if (data) {
+        setClubData(data);
+        setHouseFee(data.house_fee || '');
+      }
+    });
+  }, [user.id]);
+
+  const saveHouseFee = async () => {
+    if (!clubData) return;
+    setFeeSaving(true);
+    await supabase.from('clubs').update({ house_fee: houseFee ? parseFloat(houseFee) : null }).eq('id', clubData.id);
+    setFeeSaving(false);
+    setFeeSaved(true);
+    setTimeout(() => setFeeSaved(false), 2000);
+  };
 
   // Sample booking requests for demo
   const sampleRequests = [
@@ -1390,13 +1601,39 @@ function ClubDashboard({ user }) {
 
   return (
     <div className="dashboard">
-      <h2>{clubName}</h2>
-      <p className="subtitle">Manage your incoming booking requests</p>
+      <h2>{clubData?.name || clubName}</h2>
+      <p className="subtitle">Manage your club</p>
 
       <div className="tab-bar">
         <button className={`tab ${tab === 'requests' ? 'active' : ''}`} onClick={() => setTab('requests')}>Booking Requests</button>
         <button className={`tab ${tab === 'lineup' ? 'active' : ''}`} onClick={() => setTab('lineup')}>Upcoming Lineup</button>
+        <button className={`tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>Settings</button>
       </div>
+
+      {tab === 'settings' && (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Club Settings</h3>
+          <div className="form-group">
+            <label>House Fee (per night)</label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>$</span>
+              <input
+                type="number"
+                value={houseFee}
+                onChange={e => setHouseFee(e.target.value)}
+                placeholder="e.g. 40"
+                style={{ flex: 1 }}
+              />
+              <button className="btn btn-primary btn-sm" onClick={saveHouseFee} disabled={feeSaving}>
+                {feeSaving ? 'Saving...' : feeSaved ? 'Saved!' : 'Save'}
+              </button>
+            </div>
+            <small style={{ color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
+              The fee dancers pay you to work for the night. This shows up in their tour planner so they can budget.
+            </small>
+          </div>
+        </div>
+      )}
 
       {tab === 'requests' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

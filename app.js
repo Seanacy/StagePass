@@ -831,36 +831,131 @@ function AuthForm({ mode, setPage, onAuth }) {
     ] }) })
   ] });
 }
+var MAPBOX_TOKEN = "pk.eyJ1Ijoic3RhZ2VwYXNzIiwiYSI6ImNtOTR4Z3B6MjA4OHkya3B3YnQ5ZG9xdGcifQ.placeholder";
+async function geocodeAddress(address) {
+  try {
+    const encoded = encodeURIComponent(address);
+    const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`);
+    const data = await res.json();
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center;
+      return { lat, lng };
+    }
+  } catch (e) {
+  }
+  return null;
+}
+async function getDrivingRoute(from, to) {
+  try {
+    const res = await fetch(
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${from.lng},${from.lat};${to.lng},${to.lat}?access_token=${MAPBOX_TOKEN}`
+    );
+    const data = await res.json();
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      return {
+        distance: route.distance,
+        // meters
+        duration: route.duration
+        // seconds
+      };
+    }
+  } catch (e) {
+  }
+  return null;
+}
+function formatDuration(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.round(seconds % 3600 / 60);
+  if (hrs === 0) return `${mins} min`;
+  return `${hrs}h ${mins}m`;
+}
+function formatMiles(meters) {
+  return (meters / 1609.344).toFixed(0);
+}
 function TourBuilder({ user }) {
   const { clubs: allClubs } = useClubs();
   const [tourStops, setTourStops] = useState([]);
   const [selectedClub, setSelectedClub] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
+  const [routeLegs, setRouteLegs] = useState([]);
+  const [calculatingRoute, setCalculatingRoute] = useState(false);
+  const [customFee, setCustomFee] = useState("");
   const addStop = () => {
     if (!selectedClub || !date) return;
     const club = allClubs.find((c) => c.id === selectedClub);
     if (!club) return;
+    const fee = club.house_fee || (customFee ? parseFloat(customFee) : null);
     setTourStops((prev) => [...prev, {
       id: Date.now(),
-      club,
+      club: { ...club, house_fee: fee },
       date,
+      time,
       notes,
-      status: "pending"
+      status: "pending",
+      customFee: !club.house_fee && customFee ? parseFloat(customFee) : null
     }]);
     setSelectedClub("");
     setDate("");
+    setTime("");
     setNotes("");
+    setCustomFee("");
   };
   const removeStop = (id) => {
     setTourStops((prev) => prev.filter((s) => s.id !== id));
+    setRouteLegs([]);
   };
+  const sortedStops = [...tourStops].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const calculateRoutes = useCallback(async () => {
+    if (sortedStops.length < 2) {
+      setRouteLegs([]);
+      return;
+    }
+    setCalculatingRoute(true);
+    const legs = [];
+    for (let i = 0; i < sortedStops.length - 1; i++) {
+      const fromClub = sortedStops[i].club;
+      const toClub = sortedStops[i + 1].club;
+      let fromCoords = fromClub.lat && fromClub.lng ? { lat: fromClub.lat, lng: fromClub.lng } : null;
+      let toCoords = toClub.lat && toClub.lng ? { lat: toClub.lat, lng: toClub.lng } : null;
+      if (!fromCoords) {
+        const addr = `${fromClub.address || ""} ${fromClub.city}, ${fromClub.state}`;
+        fromCoords = await geocodeAddress(addr);
+      }
+      if (!toCoords) {
+        const addr = `${toClub.address || ""} ${toClub.city}, ${toClub.state}`;
+        toCoords = await geocodeAddress(addr);
+      }
+      if (fromCoords && toCoords) {
+        const route = await getDrivingRoute(fromCoords, toCoords);
+        legs.push({
+          from: fromClub.name,
+          to: toClub.name,
+          distance: route?.distance || 0,
+          duration: route?.duration || 0
+        });
+      } else {
+        legs.push({ from: fromClub.name, to: toClub.name, distance: 0, duration: 0 });
+      }
+    }
+    setRouteLegs(legs);
+    setCalculatingRoute(false);
+  }, [tourStops.length]);
+  useEffect(() => {
+    if (tourStops.length >= 2) calculateRoutes();
+    else setRouteLegs([]);
+  }, [tourStops.length]);
+  const totalDistance = routeLegs.reduce((sum, l) => sum + l.distance, 0);
+  const totalDuration = routeLegs.reduce((sum, l) => sum + l.duration, 0);
+  const totalFees = sortedStops.reduce((sum, s) => sum + (s.club.house_fee || 0), 0);
   return /* @__PURE__ */ jsxs("div", { className: "dashboard", children: [
     /* @__PURE__ */ jsx("h2", { children: "Build Your Tour" }),
-    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Pick clubs, choose dates, and submit booking requests." }),
+    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Pick clubs, choose dates, and see travel costs at a glance." }),
     /* @__PURE__ */ jsxs("div", { className: "card", style: { marginBottom: "2rem" }, children: [
       /* @__PURE__ */ jsx("h3", { style: { fontSize: "1rem", fontWeight: 700, marginBottom: "1rem", color: "var(--primary-light)" }, children: "Add a Stop" }),
-      /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }, children: [
+      /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }, children: [
         /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
           /* @__PURE__ */ jsx("label", { children: "Club" }),
           /* @__PURE__ */ jsxs("select", { value: selectedClub, onChange: (e) => setSelectedClub(e.target.value), children: [
@@ -877,46 +972,123 @@ function TourBuilder({ user }) {
         /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
           /* @__PURE__ */ jsx("label", { children: "Date" }),
           /* @__PURE__ */ jsx("input", { type: "date", value: date, onChange: (e) => setDate(e.target.value) })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+          /* @__PURE__ */ jsx("label", { children: "Time" }),
+          /* @__PURE__ */ jsx("input", { type: "time", value: time, onChange: (e) => setTime(e.target.value) })
         ] })
       ] }),
+      selectedClub && (() => {
+        const club = allClubs.find((c) => c.id === selectedClub);
+        if (club?.house_fee) {
+          return /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.85rem", color: "var(--success)", marginBottom: "0.75rem", padding: "0.5rem", background: "rgba(76,175,80,0.08)", borderRadius: "0.5rem" }, children: [
+            "House fee listed by club: ",
+            /* @__PURE__ */ jsxs("strong", { children: [
+              "$",
+              club.house_fee,
+              "/night"
+            ] })
+          ] });
+        }
+        return /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+          /* @__PURE__ */ jsx("label", { children: "House Fee (club hasn't listed one \u2014 enter your estimate)" }),
+          /* @__PURE__ */ jsxs("div", { style: { display: "flex", alignItems: "center", gap: "0.25rem" }, children: [
+            /* @__PURE__ */ jsx("span", { style: { fontWeight: 700 }, children: "$" }),
+            /* @__PURE__ */ jsx("input", { type: "number", value: customFee, onChange: (e) => setCustomFee(e.target.value), placeholder: "e.g. 40", style: { maxWidth: "120px" } }),
+            /* @__PURE__ */ jsx("span", { style: { fontSize: "0.75rem", color: "var(--text-dim)" }, children: "/night" })
+          ] })
+        ] });
+      })(),
       /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
         /* @__PURE__ */ jsx("label", { children: "Notes for the club (optional)" }),
         /* @__PURE__ */ jsx("input", { value: notes, onChange: (e) => setNotes(e.target.value), placeholder: "e.g. Available for 2 nights, experienced with VIP rooms" })
       ] }),
       /* @__PURE__ */ jsx("button", { className: "btn btn-primary", onClick: addStop, disabled: !selectedClub || !date, children: "Add to Tour" })
     ] }),
-    tourStops.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+    sortedStops.length >= 2 && /* @__PURE__ */ jsxs("div", { className: "tour-summary", style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "1rem",
+      marginBottom: "2rem"
+    }, children: [
+      /* @__PURE__ */ jsxs("div", { className: "card", style: { textAlign: "center", padding: "1rem" }, children: [
+        /* @__PURE__ */ jsx("div", { style: { fontSize: "1.5rem", fontWeight: 800, color: "var(--primary)" }, children: calculatingRoute ? "..." : `${formatMiles(totalDistance)} mi` }),
+        /* @__PURE__ */ jsx("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }, children: "Total Distance" })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "card", style: { textAlign: "center", padding: "1rem" }, children: [
+        /* @__PURE__ */ jsx("div", { style: { fontSize: "1.5rem", fontWeight: 800, color: "var(--accent)" }, children: calculatingRoute ? "..." : formatDuration(totalDuration) }),
+        /* @__PURE__ */ jsx("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }, children: "Total Drive Time" })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "card", style: { textAlign: "center", padding: "1rem" }, children: [
+        /* @__PURE__ */ jsxs("div", { style: { fontSize: "1.5rem", fontWeight: 800, color: "var(--danger)" }, children: [
+          "$",
+          totalFees
+        ] }),
+        /* @__PURE__ */ jsx("div", { style: { fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }, children: "Total House Fees" })
+      ] })
+    ] }),
+    sortedStops.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
       /* @__PURE__ */ jsxs("h3", { style: { fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }, children: [
         "Your Tour (",
-        tourStops.length,
+        sortedStops.length,
         " stops)"
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "tour-timeline", children: tourStops.sort((a, b) => new Date(a.date) - new Date(b.date)).map((stop, i) => /* @__PURE__ */ jsxs("div", { className: "tour-stop", children: [
-        /* @__PURE__ */ jsx("div", { className: "tour-stop-num", children: i + 1 }),
-        /* @__PURE__ */ jsxs("div", { className: "tour-stop-info", children: [
-          /* @__PURE__ */ jsx("div", { style: { fontWeight: 700, marginBottom: "0.15rem" }, children: stop.club.name }),
-          /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }, children: [
-            stop.club.city,
-            ", ",
-            stop.club.state,
-            " \u2014 ",
-            (/* @__PURE__ */ new Date(stop.date + "T12:00")).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+      /* @__PURE__ */ jsx("div", { className: "tour-timeline", children: sortedStops.map((stop, i) => /* @__PURE__ */ jsxs(React.Fragment, { children: [
+        /* @__PURE__ */ jsxs("div", { className: "tour-stop", children: [
+          /* @__PURE__ */ jsx("div", { className: "tour-stop-num", children: i + 1 }),
+          /* @__PURE__ */ jsxs("div", { className: "tour-stop-info", children: [
+            /* @__PURE__ */ jsx("div", { style: { fontWeight: 700, marginBottom: "0.15rem" }, children: stop.club.name }),
+            /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }, children: [
+              stop.club.city,
+              ", ",
+              stop.club.state,
+              " \u2014 ",
+              (/* @__PURE__ */ new Date(stop.date + "T12:00")).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+              stop.time && ` at ${stop.time}`
+            ] }),
+            /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.75rem", fontSize: "0.75rem" }, children: [
+              stop.club.house_fee && /* @__PURE__ */ jsxs("span", { style: { color: "var(--danger)" }, children: [
+                "House fee: $",
+                stop.club.house_fee,
+                stop.customFee ? " (your estimate)" : ""
+              ] }),
+              stop.club.address && /* @__PURE__ */ jsx("span", { style: { color: "var(--text-dim)" }, children: stop.club.address })
+            ] }),
+            stop.notes && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.75rem", color: "var(--text-dim)", fontStyle: "italic", marginTop: "0.25rem" }, children: [
+              '"',
+              stop.notes,
+              '"'
+            ] })
           ] }),
-          stop.notes && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.75rem", color: "var(--text-dim)", fontStyle: "italic" }, children: [
-            '"',
-            stop.notes,
-            '"'
-          ] })
+          /* @__PURE__ */ jsx("span", { className: `status-badge status-${stop.status}`, children: stop.status }),
+          /* @__PURE__ */ jsx("button", { onClick: () => removeStop(stop.id), style: {
+            background: "none",
+            border: "none",
+            color: "var(--danger)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            padding: "0.25rem"
+          }, children: "\u2715" })
         ] }),
-        /* @__PURE__ */ jsx("span", { className: `status-badge status-${stop.status}`, children: stop.status }),
-        /* @__PURE__ */ jsx("button", { onClick: () => removeStop(stop.id), style: {
-          background: "none",
-          border: "none",
-          color: "var(--danger)",
-          cursor: "pointer",
-          fontSize: "1rem",
-          padding: "0.25rem"
-        }, children: "\u2715" })
+        routeLegs[i] && routeLegs[i].distance > 0 && /* @__PURE__ */ jsxs("div", { className: "tour-leg", style: {
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          padding: "0.4rem 0 0.4rem 2.5rem",
+          fontSize: "0.75rem",
+          color: "var(--text-dim)"
+        }, children: [
+          /* @__PURE__ */ jsx("span", { style: { color: "var(--primary)" }, children: "\u2193" }),
+          /* @__PURE__ */ jsxs("span", { children: [
+            formatMiles(routeLegs[i].distance),
+            " mi"
+          ] }),
+          /* @__PURE__ */ jsx("span", { children: "\u2022" }),
+          /* @__PURE__ */ jsxs("span", { children: [
+            formatDuration(routeLegs[i].duration),
+            " drive"
+          ] })
+        ] })
       ] }, stop.id)) }),
       /* @__PURE__ */ jsx("button", { className: "btn btn-accent", style: { marginTop: "1.5rem", width: "100%" }, children: "Submit All Booking Requests" })
     ] }) : /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)" }, children: "No stops added yet. Pick a club and date above to start building your tour." })
@@ -1255,7 +1427,27 @@ function DancerDashboard({ user, setPage }) {
 }
 function ClubDashboard({ user }) {
   const [tab, setTab] = useState("requests");
+  const [clubData, setClubData] = useState(null);
+  const [houseFee, setHouseFee] = useState("");
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [feeSaved, setFeeSaved] = useState(false);
   const clubName = user?.user_metadata?.club_name || "Your Club";
+  useEffect(() => {
+    supabase.from("clubs").select("*").eq("claimed_by", user.id).single().then(({ data }) => {
+      if (data) {
+        setClubData(data);
+        setHouseFee(data.house_fee || "");
+      }
+    });
+  }, [user.id]);
+  const saveHouseFee = async () => {
+    if (!clubData) return;
+    setFeeSaving(true);
+    await supabase.from("clubs").update({ house_fee: houseFee ? parseFloat(houseFee) : null }).eq("id", clubData.id);
+    setFeeSaving(false);
+    setFeeSaved(true);
+    setTimeout(() => setFeeSaved(false), 2e3);
+  };
   const sampleRequests = [
     { id: 1, dancer: "Diamond", date: "2026-05-15", status: "pending", notes: "Available for 2 nights, 5 years experience" },
     { id: 2, dancer: "Luna", date: "2026-05-20", status: "pending", notes: "Featured at Baby Dolls Dallas, touring through your city" }
@@ -1265,11 +1457,33 @@ function ClubDashboard({ user }) {
     setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: action } : r));
   };
   return /* @__PURE__ */ jsxs("div", { className: "dashboard", children: [
-    /* @__PURE__ */ jsx("h2", { children: clubName }),
-    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Manage your incoming booking requests" }),
+    /* @__PURE__ */ jsx("h2", { children: clubData?.name || clubName }),
+    /* @__PURE__ */ jsx("p", { className: "subtitle", children: "Manage your club" }),
     /* @__PURE__ */ jsxs("div", { className: "tab-bar", children: [
       /* @__PURE__ */ jsx("button", { className: `tab ${tab === "requests" ? "active" : ""}`, onClick: () => setTab("requests"), children: "Booking Requests" }),
-      /* @__PURE__ */ jsx("button", { className: `tab ${tab === "lineup" ? "active" : ""}`, onClick: () => setTab("lineup"), children: "Upcoming Lineup" })
+      /* @__PURE__ */ jsx("button", { className: `tab ${tab === "lineup" ? "active" : ""}`, onClick: () => setTab("lineup"), children: "Upcoming Lineup" }),
+      /* @__PURE__ */ jsx("button", { className: `tab ${tab === "settings" ? "active" : ""}`, onClick: () => setTab("settings"), children: "Settings" })
+    ] }),
+    tab === "settings" && /* @__PURE__ */ jsxs("div", { className: "card", style: { padding: "1.5rem" }, children: [
+      /* @__PURE__ */ jsx("h3", { style: { fontSize: "1rem", marginBottom: "1rem" }, children: "Club Settings" }),
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "House Fee (per night)" }),
+        /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.5rem", alignItems: "center" }, children: [
+          /* @__PURE__ */ jsx("span", { style: { fontSize: "1.1rem", fontWeight: 700 }, children: "$" }),
+          /* @__PURE__ */ jsx(
+            "input",
+            {
+              type: "number",
+              value: houseFee,
+              onChange: (e) => setHouseFee(e.target.value),
+              placeholder: "e.g. 40",
+              style: { flex: 1 }
+            }
+          ),
+          /* @__PURE__ */ jsx("button", { className: "btn btn-primary btn-sm", onClick: saveHouseFee, disabled: feeSaving, children: feeSaving ? "Saving..." : feeSaved ? "Saved!" : "Save" })
+        ] }),
+        /* @__PURE__ */ jsx("small", { style: { color: "var(--text-dim)", marginTop: "0.25rem", display: "block" }, children: "The fee dancers pay you to work for the night. This shows up in their tour planner so they can budget." })
+      ] })
     ] }),
     tab === "requests" && /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "1rem" }, children: [
       requests.filter((r) => r.status === "pending").length === 0 && /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No pending requests right now. New requests will appear here." }),
