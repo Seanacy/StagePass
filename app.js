@@ -91,7 +91,29 @@ function useClubs() {
   }, []);
   return { clubs, loading };
 }
-function Navbar({ user, page, setPage, onLogout, role }) {
+function useNotifications(user) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+    setNotifications(data || []);
+    setUnreadCount((data || []).filter((n) => !n.read).length);
+  }, [user?.id]);
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 3e4);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+  const markAllRead = async () => {
+    if (!user) return;
+    await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+  return { notifications, unreadCount, markAllRead, reload: loadNotifications };
+}
+function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
   return /* @__PURE__ */ jsxs("nav", { className: "navbar", children: [
     /* @__PURE__ */ jsxs("div", { className: "navbar-brand", style: { cursor: "pointer" }, onClick: () => setPage("landing"), children: [
       "Stage",
@@ -107,10 +129,27 @@ function Navbar({ user, page, setPage, onLogout, role }) {
         setPage("dancers");
       }, children: "Dancers" }),
       user ? /* @__PURE__ */ jsxs(Fragment, { children: [
-        /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
+        /* @__PURE__ */ jsxs("a", { href: "#", onClick: (e) => {
           e.preventDefault();
           setPage("dashboard");
-        }, children: "Dashboard" }),
+        }, style: { position: "relative" }, children: [
+          "Dashboard",
+          unreadCount > 0 && /* @__PURE__ */ jsx("span", { style: {
+            position: "absolute",
+            top: "-6px",
+            right: "-10px",
+            background: "var(--danger)",
+            color: "#fff",
+            fontSize: "0.65rem",
+            fontWeight: 800,
+            borderRadius: "50%",
+            width: "18px",
+            height: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }, children: unreadCount > 9 ? "9+" : unreadCount })
+        ] }),
         /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
           e.preventDefault();
           setPage("claim");
@@ -250,6 +289,7 @@ function ClubDirectory({ setPage, user }) {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [bookingClub, setBookingClub] = useState(null);
   const states = [...new Set(allClubs.map((c) => c.state))].sort();
   const types = [...new Set(allClubs.map((c) => c.type))].sort();
   const filtered = allClubs.filter((c) => {
@@ -296,18 +336,36 @@ function ClubDirectory({ setPage, user }) {
         ] }),
         /* @__PURE__ */ jsx("div", { className: "club-contact", children: club.address }),
         /* @__PURE__ */ jsx("div", { className: "club-contact", style: { marginTop: "0.25rem" }, children: club.phone }),
-        user && user.user_metadata?.role === "dancer" && /* @__PURE__ */ jsx(
-          "button",
-          {
-            className: "btn btn-sm btn-primary",
-            style: { marginTop: "0.75rem" },
-            onClick: () => setPage("tour-builder"),
-            children: "+ Add to Tour"
-          }
-        )
+        user && user.user_metadata?.role === "dancer" && /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.5rem", marginTop: "0.75rem" }, children: [
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              className: "btn btn-sm btn-accent",
+              onClick: () => setBookingClub(club),
+              children: "Request to Book"
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              className: "btn btn-sm btn-secondary",
+              onClick: () => setPage("tour-builder"),
+              children: "+ Tour"
+            }
+          )
+        ] })
       ] }, club.id)),
       filtered.length === 0 && /* @__PURE__ */ jsx("div", { style: { gridColumn: "1 / -1", textAlign: "center", padding: "3rem", color: "var(--text-dim)" }, children: "No clubs match your search. Try a different state or keyword." })
-    ] })
+    ] }),
+    bookingClub && /* @__PURE__ */ jsx(
+      BookingRequestModal,
+      {
+        club: bookingClub,
+        user,
+        onClose: () => setBookingClub(null),
+        onSent: () => setBookingClub(null)
+      }
+    )
   ] });
 }
 function MediaCarousel({ photos, videos }) {
@@ -873,6 +931,107 @@ function formatDuration(seconds) {
 function formatMiles(meters) {
   return (meters / 1609.344).toFixed(0);
 }
+function BookingRequestModal({ club, user, onClose, onSent }) {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [message, setMessage] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("experienced");
+  const [preferredShift, setPreferredShift] = useState("night");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const handleSubmit = async () => {
+    if (!startDate) {
+      setError("Pick a start date.");
+      return;
+    }
+    setSending(true);
+    setError("");
+    try {
+      const { data: req, error: insertErr } = await supabase.from("booking_requests").insert({
+        dancer_id: user.id,
+        club_id: club.id,
+        start_date: startDate,
+        end_date: endDate || startDate,
+        message,
+        experience_level: experienceLevel,
+        preferred_shift: preferredShift,
+        status: "pending"
+      }).select().single();
+      if (insertErr) throw insertErr;
+      if (club.claimed_by) {
+        const dancerName = user.user_metadata?.stage_name || "A dancer";
+        await supabase.from("notifications").insert({
+          user_id: club.claimed_by,
+          type: "booking_request",
+          title: "New Booking Request",
+          message: `${dancerName} wants to book ${club.name} on ${(/* @__PURE__ */ new Date(startDate + "T12:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+          booking_request_id: req.id
+        });
+      }
+      onSent && onSent();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+  return /* @__PURE__ */ jsx("div", { className: "modal-overlay", onClick: onClose, children: /* @__PURE__ */ jsxs("div", { className: "modal-content", onClick: (e) => e.stopPropagation(), style: { maxWidth: "480px" }, children: [
+    /* @__PURE__ */ jsx("button", { className: "modal-close", onClick: onClose, children: "\u2715" }),
+    /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }, children: "Request to Book" }),
+    /* @__PURE__ */ jsxs("p", { style: { fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }, children: [
+      club.name,
+      " \u2014 ",
+      club.city,
+      ", ",
+      club.state
+    ] }),
+    error && /* @__PURE__ */ jsx("div", { style: { padding: "0.5rem", background: "rgba(255,71,87,0.12)", color: "var(--danger)", borderRadius: "0.5rem", fontSize: "0.85rem", marginBottom: "1rem" }, children: error }),
+    /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }, children: [
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "Start Date *" }),
+        /* @__PURE__ */ jsx("input", { type: "date", value: startDate, onChange: (e) => setStartDate(e.target.value) })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "End Date" }),
+        /* @__PURE__ */ jsx("input", { type: "date", value: endDate, onChange: (e) => setEndDate(e.target.value), min: startDate })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }, children: [
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "Experience Level" }),
+        /* @__PURE__ */ jsxs("select", { value: experienceLevel, onChange: (e) => setExperienceLevel(e.target.value), children: [
+          /* @__PURE__ */ jsx("option", { value: "beginner", children: "Beginner (under 1 year)" }),
+          /* @__PURE__ */ jsx("option", { value: "intermediate", children: "Intermediate (1-3 years)" }),
+          /* @__PURE__ */ jsx("option", { value: "experienced", children: "Experienced (3+ years)" }),
+          /* @__PURE__ */ jsx("option", { value: "featured", children: "Featured / Headliner" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+        /* @__PURE__ */ jsx("label", { children: "Preferred Shift" }),
+        /* @__PURE__ */ jsxs("select", { value: preferredShift, onChange: (e) => setPreferredShift(e.target.value), children: [
+          /* @__PURE__ */ jsx("option", { value: "day", children: "Day Shift" }),
+          /* @__PURE__ */ jsx("option", { value: "night", children: "Night Shift" }),
+          /* @__PURE__ */ jsx("option", { value: "both", children: "Both / Double" }),
+          /* @__PURE__ */ jsx("option", { value: "flexible", children: "Flexible" })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "form-group", children: [
+      /* @__PURE__ */ jsx("label", { children: "Message to Club" }),
+      /* @__PURE__ */ jsx(
+        "textarea",
+        {
+          value: message,
+          onChange: (e) => setMessage(e.target.value),
+          placeholder: "Introduce yourself \u2014 mention your experience, home club, what nights you're looking for...",
+          style: { minHeight: "80px" }
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsx("button", { className: "btn btn-primary", onClick: handleSubmit, disabled: sending, style: { width: "100%", marginTop: "0.5rem" }, children: sending ? "Sending..." : "Send Booking Request" })
+  ] }) });
+}
 function TourBuilder({ user }) {
   const { clubs: allClubs } = useClubs();
   const [tourStops, setTourStops] = useState([]);
@@ -883,6 +1042,50 @@ function TourBuilder({ user }) {
   const [routeLegs, setRouteLegs] = useState([]);
   const [calculatingRoute, setCalculatingRoute] = useState(false);
   const [customFee, setCustomFee] = useState("");
+  const [submittingAll, setSubmittingAll] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState("");
+  const [bookingClub, setBookingClub] = useState(null);
+  const submitAllRequests = async () => {
+    if (sortedStops.length === 0) return;
+    setSubmittingAll(true);
+    setSubmitMsg("");
+    let successCount = 0;
+    try {
+      for (const stop of sortedStops) {
+        const { data: req, error } = await supabase.from("booking_requests").insert({
+          dancer_id: user.id,
+          club_id: stop.club.id,
+          start_date: stop.date,
+          end_date: stop.date,
+          message: stop.notes || "",
+          experience_level: "experienced",
+          preferred_shift: "night",
+          status: "pending"
+        }).select().single();
+        if (error) {
+          console.error("Booking error:", error);
+          continue;
+        }
+        successCount++;
+        if (stop.club.claimed_by) {
+          const dancerName = user.user_metadata?.stage_name || "A dancer";
+          await supabase.from("notifications").insert({
+            user_id: stop.club.claimed_by,
+            type: "booking_request",
+            title: "New Booking Request",
+            message: `${dancerName} wants to book ${stop.club.name} on ${(/* @__PURE__ */ new Date(stop.date + "T12:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+            booking_request_id: req.id
+          });
+        }
+      }
+      setSubmitMsg(`Sent ${successCount} request${successCount !== 1 ? "s" : ""}!`);
+      setTimeout(() => setSubmitMsg(""), 4e3);
+    } catch (err) {
+      setSubmitMsg("Error: " + err.message);
+    } finally {
+      setSubmittingAll(false);
+    }
+  };
   const addStop = () => {
     if (!selectedClub || !date) return;
     const club = allClubs.find((c) => c.id === selectedClub);
@@ -1090,12 +1293,96 @@ function TourBuilder({ user }) {
           ] })
         ] })
       ] }, stop.id)) }),
-      /* @__PURE__ */ jsx("button", { className: "btn btn-accent", style: { marginTop: "1.5rem", width: "100%" }, children: "Submit All Booking Requests" })
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          className: "btn btn-accent",
+          style: { marginTop: "1.5rem", width: "100%" },
+          disabled: submittingAll,
+          onClick: submitAllRequests,
+          children: submittingAll ? "Submitting..." : submitMsg ? submitMsg : `Submit All Booking Requests (${sortedStops.length})`
+        }
+      )
     ] }) : /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)" }, children: "No stops added yet. Pick a club and date above to start building your tour." })
   ] });
 }
+function DancerBookings({ user }) {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { clubs } = useClubs();
+  useEffect(() => {
+    loadBookings();
+  }, [user.id]);
+  const loadBookings = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("booking_requests").select("*").eq("dancer_id", user.id).order("created_at", { ascending: false });
+    setBookings(data || []);
+    setLoading(false);
+  };
+  const cancelBooking = async (id) => {
+    await supabase.from("booking_requests").update({ status: "cancelled" }).eq("id", id);
+    setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "cancelled" } : b));
+  };
+  const getClubName = (clubId) => {
+    const club = clubs.find((c) => c.id === clubId);
+    return club ? `${club.name} \u2014 ${club.city}, ${club.state}` : "Unknown Club";
+  };
+  const statusColors = {
+    pending: "var(--accent)",
+    confirmed: "var(--success)",
+    declined: "var(--danger)",
+    cancelled: "var(--text-dim)"
+  };
+  if (loading) return /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "2rem", color: "var(--text-dim)" }, children: "Loading bookings..." });
+  return /* @__PURE__ */ jsxs("div", { children: [
+    /* @__PURE__ */ jsxs("h3", { style: { fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem" }, children: [
+      "Your Booking Requests (",
+      bookings.length,
+      ")"
+    ] }),
+    bookings.length === 0 ? /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No booking requests yet. Visit the Club Directory to send your first request!" }) : /* @__PURE__ */ jsx("div", { style: { display: "flex", flexDirection: "column", gap: "0.75rem" }, children: bookings.map((b) => /* @__PURE__ */ jsxs("div", { className: "card", style: { padding: "1rem" }, children: [
+      /* @__PURE__ */ jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }, children: [
+        /* @__PURE__ */ jsx("div", { style: { fontWeight: 700, fontSize: "0.95rem" }, children: getClubName(b.club_id) }),
+        /* @__PURE__ */ jsx("span", { style: {
+          fontSize: "0.7rem",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          padding: "0.2rem 0.6rem",
+          borderRadius: "1rem",
+          background: `${statusColors[b.status]}22`,
+          color: statusColors[b.status]
+        }, children: b.status })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }, children: [
+        (/* @__PURE__ */ new Date(b.start_date + "T12:00")).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+        b.end_date && b.end_date !== b.start_date && ` \u2014 ${(/* @__PURE__ */ new Date(b.end_date + "T12:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+      ] }),
+      /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.25rem" }, children: [
+        b.experience_level && /* @__PURE__ */ jsx("span", { className: "club-tag", style: { fontSize: "0.65rem" }, children: b.experience_level }),
+        b.preferred_shift && /* @__PURE__ */ jsxs("span", { className: "club-tag", style: { fontSize: "0.65rem" }, children: [
+          b.preferred_shift,
+          " shift"
+        ] })
+      ] }),
+      b.message && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-dim)", fontStyle: "italic" }, children: [
+        '"',
+        b.message,
+        '"'
+      ] }),
+      b.status === "pending" && /* @__PURE__ */ jsx(
+        "button",
+        {
+          className: "btn btn-sm btn-secondary",
+          style: { marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--danger)", borderColor: "var(--danger)" },
+          onClick: () => cancelBooking(b.id),
+          children: "Cancel Request"
+        }
+      )
+    ] }, b.id)) })
+  ] });
+}
 function DancerDashboard({ user, setPage }) {
-  const [tab, setTab] = useState("tours");
+  const [tab, setTab] = useState("bookings");
   const [dancerProfile, setDancerProfile] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -1261,10 +1548,12 @@ function DancerDashboard({ user, setPage }) {
       fontWeight: 600
     }, children: msg }),
     /* @__PURE__ */ jsxs("div", { className: "tab-bar", children: [
+      /* @__PURE__ */ jsx("button", { className: `tab ${tab === "bookings" ? "active" : ""}`, onClick: () => setTab("bookings"), children: "My Bookings" }),
       /* @__PURE__ */ jsx("button", { className: `tab ${tab === "tours" ? "active" : ""}`, onClick: () => setTab("tours"), children: "My Tours" }),
       /* @__PURE__ */ jsx("button", { className: `tab ${tab === "media" ? "active" : ""}`, onClick: () => setTab("media"), children: "My Media" }),
       /* @__PURE__ */ jsx("button", { className: `tab ${tab === "profile" ? "active" : ""}`, onClick: () => setTab("profile"), children: "My Profile" })
     ] }),
+    tab === "bookings" && /* @__PURE__ */ jsx(DancerBookings, { user }),
     tab === "tours" && /* @__PURE__ */ jsxs("div", { children: [
       /* @__PURE__ */ jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }, children: [
         /* @__PURE__ */ jsx("h3", { style: { fontSize: "1.1rem", fontWeight: 700 }, children: "Upcoming Tour Stops" }),
@@ -1425,21 +1714,32 @@ function DancerDashboard({ user, setPage }) {
     ] })
   ] });
 }
-function ClubDashboard({ user }) {
+function ClubDashboard({ user, onNotificationChange }) {
   const [tab, setTab] = useState("requests");
   const [clubData, setClubData] = useState(null);
   const [houseFee, setHouseFee] = useState("");
   const [feeSaving, setFeeSaving] = useState(false);
   const [feeSaved, setFeeSaved] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const clubName = user?.user_metadata?.club_name || "Your Club";
   useEffect(() => {
     supabase.from("clubs").select("*").eq("claimed_by", user.id).single().then(({ data }) => {
       if (data) {
         setClubData(data);
         setHouseFee(data.house_fee || "");
+        loadRequests(data.id);
+      } else {
+        setLoadingRequests(false);
       }
     });
   }, [user.id]);
+  const loadRequests = async (clubId) => {
+    setLoadingRequests(true);
+    const { data } = await supabase.from("booking_requests").select("*").eq("club_id", clubId).order("created_at", { ascending: false });
+    setRequests(data || []);
+    setLoadingRequests(false);
+  };
   const saveHouseFee = async () => {
     if (!clubData) return;
     setFeeSaving(true);
@@ -1448,13 +1748,28 @@ function ClubDashboard({ user }) {
     setFeeSaved(true);
     setTimeout(() => setFeeSaved(false), 2e3);
   };
-  const sampleRequests = [
-    { id: 1, dancer: "Diamond", date: "2026-05-15", status: "pending", notes: "Available for 2 nights, 5 years experience" },
-    { id: 2, dancer: "Luna", date: "2026-05-20", status: "pending", notes: "Featured at Baby Dolls Dallas, touring through your city" }
-  ];
-  const [requests, setRequests] = useState(sampleRequests);
-  const handleRequest = (id, action) => {
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: action } : r));
+  const handleRequest = async (requestId, action) => {
+    const newStatus = action === "confirmed" ? "confirmed" : "declined";
+    const { error } = await supabase.from("booking_requests").update({ status: newStatus, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", requestId);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    const req = requests.find((r) => r.id === requestId);
+    if (req) {
+      await supabase.from("notifications").insert({
+        user_id: req.dancer_id,
+        type: newStatus === "confirmed" ? "booking_confirmed" : "booking_declined",
+        title: newStatus === "confirmed" ? "Booking Confirmed!" : "Booking Declined",
+        message: `${clubData?.name || "A club"} has ${newStatus} your booking for ${(/* @__PURE__ */ new Date(req.start_date + "T12:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+        booking_request_id: requestId
+      });
+    }
+    setRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status: newStatus } : r));
+    onNotificationChange && onNotificationChange();
+  };
+  const getDancerLabel = (req) => {
+    return req.message ? req.message.slice(0, 60) : "Dancer";
   };
   return /* @__PURE__ */ jsxs("div", { className: "dashboard", children: [
     /* @__PURE__ */ jsx("h2", { children: clubData?.name || clubName }),
@@ -1486,7 +1801,8 @@ function ClubDashboard({ user }) {
       ] })
     ] }),
     tab === "requests" && /* @__PURE__ */ jsxs("div", { style: { display: "flex", flexDirection: "column", gap: "1rem" }, children: [
-      requests.filter((r) => r.status === "pending").length === 0 && /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No pending requests right now. New requests will appear here." }),
+      loadingRequests && /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "2rem", color: "var(--text-dim)" }, children: "Loading requests..." }),
+      !loadingRequests && requests.filter((r) => r.status === "pending").length === 0 && /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No pending requests right now. New requests will appear here." }),
       requests.filter((r) => r.status === "pending").map((req) => /* @__PURE__ */ jsxs("div", { className: "card", style: { display: "flex", alignItems: "flex-start", gap: "1rem" }, children: [
         /* @__PURE__ */ jsx("div", { style: {
           width: "48px",
@@ -1500,15 +1816,26 @@ function ClubDashboard({ user }) {
           flexShrink: 0
         }, children: "\u{1F483}" }),
         /* @__PURE__ */ jsxs("div", { style: { flex: 1 }, children: [
-          /* @__PURE__ */ jsx("div", { style: { fontWeight: 700, marginBottom: "0.15rem" }, children: req.dancer }),
-          /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }, children: [
-            "Requested: ",
-            (/* @__PURE__ */ new Date(req.date + "T12:00")).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+          /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.25rem" }, children: [
+            req.experience_level && /* @__PURE__ */ jsx("span", { className: "club-tag", style: { fontSize: "0.7rem" }, children: req.experience_level }),
+            req.preferred_shift && /* @__PURE__ */ jsxs("span", { className: "club-tag", style: { fontSize: "0.7rem" }, children: [
+              req.preferred_shift,
+              " shift"
+            ] })
           ] }),
-          req.notes && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-dim)", fontStyle: "italic", marginBottom: "0.5rem" }, children: [
+          /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.25rem" }, children: [
+            "Dates: ",
+            (/* @__PURE__ */ new Date(req.start_date + "T12:00")).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+            req.end_date && req.end_date !== req.start_date && ` \u2014 ${(/* @__PURE__ */ new Date(req.end_date + "T12:00")).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`
+          ] }),
+          req.message && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-dim)", fontStyle: "italic", marginBottom: "0.5rem" }, children: [
             '"',
-            req.notes,
+            req.message,
             '"'
+          ] }),
+          /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.7rem", color: "var(--text-dim)", marginBottom: "0.5rem" }, children: [
+            "Sent ",
+            new Date(req.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
           ] }),
           /* @__PURE__ */ jsxs("div", { style: { display: "flex", gap: "0.5rem" }, children: [
             /* @__PURE__ */ jsx(
@@ -1533,11 +1860,19 @@ function ClubDashboard({ user }) {
         ] })
       ] }, req.id))
     ] }),
-    tab === "lineup" && /* @__PURE__ */ jsx("div", { children: requests.filter((r) => r.status === "confirmed").length === 0 ? /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No confirmed dancers yet. Accept booking requests to build your lineup." }) : /* @__PURE__ */ jsx("div", { style: { display: "flex", flexDirection: "column", gap: "1rem" }, children: requests.filter((r) => r.status === "confirmed").map((req) => /* @__PURE__ */ jsxs("div", { className: "tour-stop", children: [
+    tab === "lineup" && /* @__PURE__ */ jsx("div", { children: requests.filter((r) => r.status === "confirmed").length === 0 ? /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "3rem", color: "var(--text-dim)", background: "var(--bg-card)", borderRadius: "1rem", border: "1px dashed var(--border)" }, children: "No confirmed dancers yet. Accept booking requests to build your lineup." }) : /* @__PURE__ */ jsx("div", { style: { display: "flex", flexDirection: "column", gap: "1rem" }, children: requests.filter((r) => r.status === "confirmed").sort((a, b) => new Date(a.start_date) - new Date(b.start_date)).map((req) => /* @__PURE__ */ jsxs("div", { className: "tour-stop", children: [
       /* @__PURE__ */ jsx("div", { className: "tour-stop-num", style: { background: "var(--success)" }, children: "\u2713" }),
       /* @__PURE__ */ jsxs("div", { className: "tour-stop-info", children: [
-        /* @__PURE__ */ jsx("div", { style: { fontWeight: 700 }, children: req.dancer }),
-        /* @__PURE__ */ jsx("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)" }, children: (/* @__PURE__ */ new Date(req.date + "T12:00")).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) })
+        /* @__PURE__ */ jsx("div", { style: { fontWeight: 700 }, children: "Dancer" }),
+        /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.8rem", color: "var(--text-muted)" }, children: [
+          (/* @__PURE__ */ new Date(req.start_date + "T12:00")).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+          req.end_date && req.end_date !== req.start_date && ` \u2014 ${(/* @__PURE__ */ new Date(req.end_date + "T12:00")).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+        ] }),
+        req.preferred_shift && /* @__PURE__ */ jsxs("div", { style: { fontSize: "0.75rem", color: "var(--text-dim)" }, children: [
+          req.preferred_shift,
+          " shift \u2022 ",
+          req.experience_level
+        ] })
       ] }),
       /* @__PURE__ */ jsx("span", { className: "status-badge status-confirmed", children: "Confirmed" })
     ] }, req.id)) }) })
@@ -1547,6 +1882,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [page, setPage] = useState("landing");
   const [loading, setLoading] = useState(true);
+  const { notifications, unreadCount, markAllRead, reload: reloadNotifications } = useNotifications(user);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null);
@@ -1557,6 +1893,11 @@ function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (page === "dashboard" && unreadCount > 0) {
+      markAllRead();
+    }
+  }, [page]);
   const handleAuth = (user2) => {
     setUser(user2);
     setPage("dashboard");
@@ -1569,7 +1910,7 @@ function App() {
   const role = user?.user_metadata?.role || "dancer";
   if (loading) return /* @__PURE__ */ jsx("div", { style: { textAlign: "center", padding: "4rem", color: "var(--text-muted)" }, children: "Loading..." });
   return /* @__PURE__ */ jsxs("div", { children: [
-    /* @__PURE__ */ jsx(Navbar, { user, page, setPage, onLogout: handleLogout, role }),
+    /* @__PURE__ */ jsx(Navbar, { user, page, setPage, onLogout: handleLogout, role, unreadCount }),
     page === "landing" && /* @__PURE__ */ jsx(Landing, { setPage }),
     page === "signup" && /* @__PURE__ */ jsx(AuthForm, { mode: "signup", setPage, onAuth: handleAuth }),
     page === "login" && /* @__PURE__ */ jsx(AuthForm, { mode: "login", setPage, onAuth: handleAuth }),
@@ -1578,7 +1919,7 @@ function App() {
     page === "tour-builder" && user && /* @__PURE__ */ jsx(TourBuilder, { user }),
     page === "claim" && user && /* @__PURE__ */ jsx(ClaimAccount, { user, setPage }),
     page === "admin-codes" && user && /* @__PURE__ */ jsx(AdminClaimCodes, { user }),
-    page === "dashboard" && user && (role === "club" ? /* @__PURE__ */ jsx(ClubDashboard, { user }) : /* @__PURE__ */ jsx(DancerDashboard, { user, setPage }))
+    page === "dashboard" && user && (role === "club" ? /* @__PURE__ */ jsx(ClubDashboard, { user, onNotificationChange: reloadNotifications }) : /* @__PURE__ */ jsx(DancerDashboard, { user, setPage }))
   ] });
 }
 createRoot(document.getElementById("root")).render(/* @__PURE__ */ jsx(App, {}));

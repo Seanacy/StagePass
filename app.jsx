@@ -52,8 +52,46 @@ function useClubs() {
   return { clubs, loading };
 }
 
+// ─── Notifications Hook ───
+function useNotifications(user) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setNotifications(data || []);
+    setUnreadCount((data || []).filter(n => !n.read).length);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadNotifications();
+    // Poll every 30 seconds for new notifications
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
+
+  const markAllRead = async () => {
+    if (!user) return;
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    setUnreadCount(0);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  return { notifications, unreadCount, markAllRead, reload: loadNotifications };
+}
+
 // ─── Navbar ───
-function Navbar({ user, page, setPage, onLogout, role }) {
+function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
   return (
     <nav className="navbar">
       <div className="navbar-brand" style={{ cursor: 'pointer' }} onClick={() => setPage('landing')}>
@@ -64,7 +102,17 @@ function Navbar({ user, page, setPage, onLogout, role }) {
         <a href="#" onClick={(e) => { e.preventDefault(); setPage('dancers'); }}>Dancers</a>
         {user ? (
           <>
-            <a href="#" onClick={(e) => { e.preventDefault(); setPage('dashboard'); }}>Dashboard</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setPage('dashboard'); }} style={{ position: 'relative' }}>
+              Dashboard
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: '-6px', right: '-10px',
+                  background: 'var(--danger)', color: '#fff', fontSize: '0.65rem',
+                  fontWeight: 800, borderRadius: '50%', width: '18px', height: '18px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </a>
             <a href="#" onClick={(e) => { e.preventDefault(); setPage('claim'); }} style={{ fontSize: '0.8rem' }}>Claim</a>
             {user.email === ADMIN_EMAIL && (
               <a href="#" onClick={(e) => { e.preventDefault(); setPage('admin-codes'); }} style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Admin</a>
@@ -235,6 +283,7 @@ function ClubDirectory({ setPage, user }) {
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [bookingClub, setBookingClub] = useState(null);
 
   const states = [...new Set(allClubs.map(c => c.state))].sort();
   const types = [...new Set(allClubs.map(c => c.type))].sort();
@@ -280,10 +329,16 @@ function ClubDirectory({ setPage, user }) {
             <div className="club-contact">{club.address}</div>
             <div className="club-contact" style={{ marginTop: '0.25rem' }}>{club.phone}</div>
             {user && user.user_metadata?.role === 'dancer' && (
-              <button className="btn btn-sm btn-primary" style={{ marginTop: '0.75rem' }}
-                onClick={() => setPage('tour-builder')}>
-                + Add to Tour
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <button className="btn btn-sm btn-accent"
+                  onClick={() => setBookingClub(club)}>
+                  Request to Book
+                </button>
+                <button className="btn btn-sm btn-secondary"
+                  onClick={() => setPage('tour-builder')}>
+                  + Tour
+                </button>
+              </div>
             )}
           </div>
         ))}
@@ -293,6 +348,15 @@ function ClubDirectory({ setPage, user }) {
           </div>
         )}
       </div>
+
+      {bookingClub && (
+        <BookingRequestModal
+          club={bookingClub}
+          user={user}
+          onClose={() => setBookingClub(null)}
+          onSent={() => setBookingClub(null)}
+        />
+      )}
     </div>
   );
 }
@@ -923,6 +987,117 @@ function formatMiles(meters) {
   return (meters / 1609.344).toFixed(0);
 }
 
+// ─── Booking Request Modal ───
+function BookingRequestModal({ club, user, onClose, onSent }) {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [message, setMessage] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('experienced');
+  const [preferredShift, setPreferredShift] = useState('night');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!startDate) { setError('Pick a start date.'); return; }
+    setSending(true);
+    setError('');
+    try {
+      const { data: req, error: insertErr } = await supabase
+        .from('booking_requests')
+        .insert({
+          dancer_id: user.id,
+          club_id: club.id,
+          start_date: startDate,
+          end_date: endDate || startDate,
+          message,
+          experience_level: experienceLevel,
+          preferred_shift: preferredShift,
+          status: 'pending',
+        })
+        .select()
+        .single();
+      if (insertErr) throw insertErr;
+
+      // Create notification for club owner (if club is claimed)
+      if (club.claimed_by) {
+        const dancerName = user.user_metadata?.stage_name || 'A dancer';
+        await supabase.from('notifications').insert({
+          user_id: club.claimed_by,
+          type: 'booking_request',
+          title: 'New Booking Request',
+          message: `${dancerName} wants to book ${club.name} on ${new Date(startDate + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          booking_request_id: req.id,
+        });
+      }
+
+      onSent && onSent();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Request to Book</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>{club.name} — {club.city}, {club.state}</p>
+
+        {error && <div style={{ padding: '0.5rem', background: 'rgba(255,71,87,0.12)', color: 'var(--danger)', borderRadius: '0.5rem', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-group">
+            <label>Start Date *</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>End Date</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="form-group">
+            <label>Experience Level</label>
+            <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}>
+              <option value="beginner">Beginner (under 1 year)</option>
+              <option value="intermediate">Intermediate (1-3 years)</option>
+              <option value="experienced">Experienced (3+ years)</option>
+              <option value="featured">Featured / Headliner</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Preferred Shift</label>
+            <select value={preferredShift} onChange={e => setPreferredShift(e.target.value)}>
+              <option value="day">Day Shift</option>
+              <option value="night">Night Shift</option>
+              <option value="both">Both / Double</option>
+              <option value="flexible">Flexible</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Message to Club</label>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="Introduce yourself — mention your experience, home club, what nights you're looking for..."
+            style={{ minHeight: '80px' }}
+          />
+        </div>
+
+        <button className="btn btn-primary" onClick={handleSubmit} disabled={sending} style={{ width: '100%', marginTop: '0.5rem' }}>
+          {sending ? 'Sending...' : 'Send Booking Request'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TourBuilder({ user }) {
   const { clubs: allClubs } = useClubs();
   const [tourStops, setTourStops] = useState([]);
@@ -934,6 +1109,54 @@ function TourBuilder({ user }) {
   const [calculatingRoute, setCalculatingRoute] = useState(false);
 
   const [customFee, setCustomFee] = useState('');
+  const [submittingAll, setSubmittingAll] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState('');
+  const [bookingClub, setBookingClub] = useState(null); // for individual booking modal
+
+  const submitAllRequests = async () => {
+    if (sortedStops.length === 0) return;
+    setSubmittingAll(true);
+    setSubmitMsg('');
+    let successCount = 0;
+    try {
+      for (const stop of sortedStops) {
+        const { data: req, error } = await supabase
+          .from('booking_requests')
+          .insert({
+            dancer_id: user.id,
+            club_id: stop.club.id,
+            start_date: stop.date,
+            end_date: stop.date,
+            message: stop.notes || '',
+            experience_level: 'experienced',
+            preferred_shift: 'night',
+            status: 'pending',
+          })
+          .select()
+          .single();
+        if (error) { console.error('Booking error:', error); continue; }
+        successCount++;
+
+        // Notify club owner
+        if (stop.club.claimed_by) {
+          const dancerName = user.user_metadata?.stage_name || 'A dancer';
+          await supabase.from('notifications').insert({
+            user_id: stop.club.claimed_by,
+            type: 'booking_request',
+            title: 'New Booking Request',
+            message: `${dancerName} wants to book ${stop.club.name} on ${new Date(stop.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+            booking_request_id: req.id,
+          });
+        }
+      }
+      setSubmitMsg(`Sent ${successCount} request${successCount !== 1 ? 's' : ''}!`);
+      setTimeout(() => setSubmitMsg(''), 4000);
+    } catch (err) {
+      setSubmitMsg('Error: ' + err.message);
+    } finally {
+      setSubmittingAll(false);
+    }
+  };
 
   const addStop = () => {
     if (!selectedClub || !date) return;
@@ -1145,8 +1368,10 @@ function TourBuilder({ user }) {
               </React.Fragment>
             ))}
           </div>
-          <button className="btn btn-accent" style={{ marginTop: '1.5rem', width: '100%' }}>
-            Submit All Booking Requests
+          <button className="btn btn-accent" style={{ marginTop: '1.5rem', width: '100%' }}
+            disabled={submittingAll}
+            onClick={submitAllRequests}>
+            {submittingAll ? 'Submitting...' : submitMsg ? submitMsg : `Submit All Booking Requests (${sortedStops.length})`}
           </button>
         </>
       ) : (
@@ -1158,9 +1383,90 @@ function TourBuilder({ user }) {
   );
 }
 
+// ─── Dancer Bookings (sub-component) ───
+function DancerBookings({ user }) {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { clubs } = useClubs();
+
+  useEffect(() => {
+    loadBookings();
+  }, [user.id]);
+
+  const loadBookings = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('dancer_id', user.id)
+      .order('created_at', { ascending: false });
+    setBookings(data || []);
+    setLoading(false);
+  };
+
+  const cancelBooking = async (id) => {
+    await supabase.from('booking_requests').update({ status: 'cancelled' }).eq('id', id);
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+  };
+
+  const getClubName = (clubId) => {
+    const club = clubs.find(c => c.id === clubId);
+    return club ? `${club.name} — ${club.city}, ${club.state}` : 'Unknown Club';
+  };
+
+  const statusColors = {
+    pending: 'var(--accent)',
+    confirmed: 'var(--success)',
+    declined: 'var(--danger)',
+    cancelled: 'var(--text-dim)',
+  };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)' }}>Loading bookings...</div>;
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Your Booking Requests ({bookings.length})</h3>
+      {bookings.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)', background: 'var(--bg-card)', borderRadius: '1rem', border: '1px dashed var(--border)' }}>
+          No booking requests yet. Visit the Club Directory to send your first request!
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {bookings.map(b => (
+            <div key={b.id} className="card" style={{ padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{getClubName(b.club_id)}</div>
+                <span style={{
+                  fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
+                  padding: '0.2rem 0.6rem', borderRadius: '1rem',
+                  background: `${statusColors[b.status]}22`,
+                  color: statusColors[b.status],
+                }}>{b.status}</span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                {new Date(b.start_date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {b.end_date && b.end_date !== b.start_date && ` — ${new Date(b.end_date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                {b.experience_level && <span className="club-tag" style={{ fontSize: '0.65rem' }}>{b.experience_level}</span>}
+                {b.preferred_shift && <span className="club-tag" style={{ fontSize: '0.65rem' }}>{b.preferred_shift} shift</span>}
+              </div>
+              {b.message && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>"{b.message}"</div>}
+              {b.status === 'pending' && (
+                <button className="btn btn-sm btn-secondary" style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                  onClick={() => cancelBooking(b.id)}>Cancel Request</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Dancer Dashboard ───
 function DancerDashboard({ user, setPage }) {
-  const [tab, setTab] = useState('tours');
+  const [tab, setTab] = useState('bookings');
   const [dancerProfile, setDancerProfile] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -1367,10 +1673,14 @@ function DancerDashboard({ user, setPage }) {
       )}
 
       <div className="tab-bar">
+        <button className={`tab ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>My Bookings</button>
         <button className={`tab ${tab === 'tours' ? 'active' : ''}`} onClick={() => setTab('tours')}>My Tours</button>
         <button className={`tab ${tab === 'media' ? 'active' : ''}`} onClick={() => setTab('media')}>My Media</button>
         <button className={`tab ${tab === 'profile' ? 'active' : ''}`} onClick={() => setTab('profile')}>My Profile</button>
       </div>
+
+      {/* ─── Bookings Tab ─── */}
+      {tab === 'bookings' && <DancerBookings user={user} />}
 
       {/* ─── Tours Tab ─── */}
       {tab === 'tours' && (
@@ -1561,12 +1871,14 @@ function DancerDashboard({ user, setPage }) {
 }
 
 // ─── Club Dashboard ───
-function ClubDashboard({ user }) {
+function ClubDashboard({ user, onNotificationChange }) {
   const [tab, setTab] = useState('requests');
   const [clubData, setClubData] = useState(null);
   const [houseFee, setHouseFee] = useState('');
   const [feeSaving, setFeeSaving] = useState(false);
   const [feeSaved, setFeeSaved] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const clubName = user?.user_metadata?.club_name || 'Your Club';
 
   useEffect(() => {
@@ -1575,9 +1887,23 @@ function ClubDashboard({ user }) {
       if (data) {
         setClubData(data);
         setHouseFee(data.house_fee || '');
+        loadRequests(data.id);
+      } else {
+        setLoadingRequests(false);
       }
     });
   }, [user.id]);
+
+  const loadRequests = async (clubId) => {
+    setLoadingRequests(true);
+    const { data } = await supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('club_id', clubId)
+      .order('created_at', { ascending: false });
+    setRequests(data || []);
+    setLoadingRequests(false);
+  };
 
   const saveHouseFee = async () => {
     if (!clubData) return;
@@ -1588,16 +1914,35 @@ function ClubDashboard({ user }) {
     setTimeout(() => setFeeSaved(false), 2000);
   };
 
-  // Sample booking requests for demo
-  const sampleRequests = [
-    { id: 1, dancer: 'Diamond', date: '2026-05-15', status: 'pending', notes: 'Available for 2 nights, 5 years experience' },
-    { id: 2, dancer: 'Luna', date: '2026-05-20', status: 'pending', notes: 'Featured at Baby Dolls Dallas, touring through your city' },
-  ];
+  const handleRequest = async (requestId, action) => {
+    const newStatus = action === 'confirmed' ? 'confirmed' : 'declined';
+    const { error } = await supabase
+      .from('booking_requests')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', requestId);
+    if (error) { console.error(error); return; }
 
-  const [requests, setRequests] = useState(sampleRequests);
+    // Find the request to get dancer info
+    const req = requests.find(r => r.id === requestId);
+    if (req) {
+      // Notify the dancer
+      await supabase.from('notifications').insert({
+        user_id: req.dancer_id,
+        type: newStatus === 'confirmed' ? 'booking_confirmed' : 'booking_declined',
+        title: newStatus === 'confirmed' ? 'Booking Confirmed!' : 'Booking Declined',
+        message: `${clubData?.name || 'A club'} has ${newStatus} your booking for ${new Date(req.start_date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        booking_request_id: requestId,
+      });
+    }
 
-  const handleRequest = (id, action) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action } : r));
+    // Refresh
+    setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
+    onNotificationChange && onNotificationChange();
+  };
+
+  // Helper to get dancer display name from request
+  const getDancerLabel = (req) => {
+    return req.message ? req.message.slice(0, 60) : 'Dancer';
   };
 
   return (
@@ -1638,7 +1983,8 @@ function ClubDashboard({ user }) {
 
       {tab === 'requests' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {requests.filter(r => r.status === 'pending').length === 0 && (
+          {loadingRequests && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)' }}>Loading requests...</div>}
+          {!loadingRequests && requests.filter(r => r.status === 'pending').length === 0 && (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)', background: 'var(--bg-card)', borderRadius: '1rem', border: '1px dashed var(--border)' }}>
               No pending requests right now. New requests will appear here.
             </div>
@@ -1652,11 +1998,18 @@ function ClubDashboard({ user }) {
                 fontSize: '1.5rem', flexShrink: 0
               }}>💃</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, marginBottom: '0.15rem' }}>{req.dancer}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                  Requested: {new Date(req.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                  {req.experience_level && <span className="club-tag" style={{ fontSize: '0.7rem' }}>{req.experience_level}</span>}
+                  {req.preferred_shift && <span className="club-tag" style={{ fontSize: '0.7rem' }}>{req.preferred_shift} shift</span>}
                 </div>
-                {req.notes && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: '0.5rem' }}>"{req.notes}"</div>}
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                  Dates: {new Date(req.start_date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  {req.end_date && req.end_date !== req.start_date && ` — ${new Date(req.end_date + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`}
+                </div>
+                {req.message && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: '0.5rem' }}>"{req.message}"</div>}
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
+                  Sent {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button className="btn btn-sm" style={{ background: 'var(--success)', color: '#fff', border: 'none' }}
                     onClick={() => handleRequest(req.id, 'confirmed')}>Accept</button>
@@ -1677,14 +2030,16 @@ function ClubDashboard({ user }) {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {requests.filter(r => r.status === 'confirmed').map(req => (
+              {requests.filter(r => r.status === 'confirmed').sort((a, b) => new Date(a.start_date) - new Date(b.start_date)).map(req => (
                 <div key={req.id} className="tour-stop">
                   <div className="tour-stop-num" style={{ background: 'var(--success)' }}>✓</div>
                   <div className="tour-stop-info">
-                    <div style={{ fontWeight: 700 }}>{req.dancer}</div>
+                    <div style={{ fontWeight: 700 }}>Dancer</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {new Date(req.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                      {new Date(req.start_date + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                      {req.end_date && req.end_date !== req.start_date && ` — ${new Date(req.end_date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                     </div>
+                    {req.preferred_shift && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{req.preferred_shift} shift • {req.experience_level}</div>}
                   </div>
                   <span className="status-badge status-confirmed">Confirmed</span>
                 </div>
@@ -1702,6 +2057,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [page, setPage] = useState('landing');
   const [loading, setLoading] = useState(true);
+  const { notifications, unreadCount, markAllRead, reload: reloadNotifications } = useNotifications(user);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1715,6 +2071,13 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Mark notifications read when user opens dashboard
+  useEffect(() => {
+    if (page === 'dashboard' && unreadCount > 0) {
+      markAllRead();
+    }
+  }, [page]);
 
   const handleAuth = (user) => {
     setUser(user);
@@ -1733,7 +2096,7 @@ function App() {
 
   return (
     <div>
-      <Navbar user={user} page={page} setPage={setPage} onLogout={handleLogout} role={role} />
+      <Navbar user={user} page={page} setPage={setPage} onLogout={handleLogout} role={role} unreadCount={unreadCount} />
 
       {page === 'landing' && <Landing setPage={setPage} />}
       {page === 'signup' && <AuthForm mode="signup" setPage={setPage} onAuth={handleAuth} />}
@@ -1744,7 +2107,9 @@ function App() {
       {page === 'claim' && user && <ClaimAccount user={user} setPage={setPage} />}
       {page === 'admin-codes' && user && <AdminClaimCodes user={user} />}
       {page === 'dashboard' && user && (
-        role === 'club' ? <ClubDashboard user={user} /> : <DancerDashboard user={user} setPage={setPage} />
+        role === 'club'
+          ? <ClubDashboard user={user} onNotificationChange={reloadNotifications} />
+          : <DancerDashboard user={user} setPage={setPage} />
       )}
     </div>
   );
