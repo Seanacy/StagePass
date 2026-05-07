@@ -113,7 +113,7 @@ function Landing({ setPage }) {
       /* @__PURE__ */ jsxs("h1", { style: { fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 900, lineHeight: 1.1, marginBottom: "1.25rem" }, children: [
         "Build Your Tour.",
         /* @__PURE__ */ jsx("br", {}),
-        /* @__PURE__ */ jsxs("span", { style: { color: "var(--accent)" }, children: [
+        /* @__PURE__ */ jsxs("span", { style: { color: "var(--accent)", fontFamily: "'Dancing Script', cursive", fontSize: "1.15em" }, children: [
           "Join The ",
           /* @__PURE__ */ jsx("span", { style: { color: "var(--success)" }, children: "$" }),
           "howcase."
