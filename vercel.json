@@ -1,7 +1,28 @@
 {
   "buildCommand": "sed -i \"s|MAPBOX_TOKEN_PLACEHOLDER|$MAPBOX_TOKEN|g\" index.html",
   "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/admin",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/admin.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/((?!admin).*)", "destination": "/index.html" }
   ]
 }
