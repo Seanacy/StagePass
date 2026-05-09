@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import { AdminPanel } from "./admin.js";
 var SUPABASE_URL = "https://uxfvrlmszkhlxmiqolue.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4ZnZybG1zemtobHhtaXFvbHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMDUxNTcsImV4cCI6MjA5MzY4MTE1N30.fIfsCdy8bK6XuvR_OTksdRhuEP8HPRNX6nq7txw-Fms";
 var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -183,7 +184,7 @@ function Navbar({ user, page, setPage, onLogout, role, unreadCount }) {
         }, children: "Claim" }),
         user.email === ADMIN_EMAIL && /* @__PURE__ */ jsx("a", { href: "#", onClick: (e) => {
           e.preventDefault();
-          nav("admin-codes");
+          nav("admin");
         }, style: { color: "var(--accent)" }, children: "Admin" }),
         /* @__PURE__ */ jsx("button", { onClick: () => {
           onLogout();
@@ -1948,7 +1949,7 @@ function App() {
     page === "dancers" && /* @__PURE__ */ jsx(DancerShowcase, {}),
     page === "tour-builder" && user && /* @__PURE__ */ jsx(TourBuilder, { user }),
     page === "claim" && user && /* @__PURE__ */ jsx(ClaimAccount, { user, setPage }),
-    page === "admin-codes" && user && /* @__PURE__ */ jsx(AdminClaimCodes, { user }),
+    page === "admin" && user && /* @__PURE__ */ jsx(AdminPanel, { user: user, onClose: function() { setPage("landing"); } }),
     page === "dashboard" && user && (role === "club" ? /* @__PURE__ */ jsx(ClubDashboard, { user, onNotificationChange: reloadNotifications }) : /* @__PURE__ */ jsx(DancerDashboard, { user, setPage }))
   ] });
 }
