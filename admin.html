@@ -23,6 +23,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   var Fragment = React.Fragment;
   var createClient = supabase.createClient;
 
+
   function jsx(type, props, key) {
     if (!props) props = {};
     var children = props.children;
@@ -35,7 +36,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   }
   var jsxs = jsx;
 
+
+  var ADMIN_PASSWORD = '00272213Sr$';
+
+
   document.getElementById('root').innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:rgba(255,255,255,0.5)">Loading admin...</div>';
+
 
   fetch('/admin.js?v=' + Date.now())
     .then(function(r) { return r.text(); })
@@ -44,61 +50,53 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       code = code.replace(/^export\s+function/gm, 'function');
       code = code.replace(/.*createRoot.*/g, '');
 
+
       var fn = new Function(
         'React', 'useState', 'useEffect', 'useCallback',
         'Fragment', 'jsx', 'jsxs', 'createClient',
         code + '\nreturn { AdminPanel: AdminPanel, SUPABASE_URL: SUPABASE_URL, SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, ADMIN_EMAIL: ADMIN_EMAIL };'
       );
 
+
       var result = fn(React, useState, useEffect, useCallback, Fragment, jsx, jsxs, createClient);
       var AdminPanel = result.AdminPanel;
-      var sb = createClient(result.SUPABASE_URL, result.SUPABASE_ANON_KEY);
       var ADMIN_EMAIL = result.ADMIN_EMAIL;
+
 
       function App() {
         var s1 = useState(null); var user = s1[0]; var setUser = s1[1];
-        var s2 = useState(''); var email = s2[0]; var setEmail = s2[1];
-        var s3 = useState(false); var sent = s3[0]; var setSent = s3[1];
-        var s4 = useState(true); var loading = s4[0]; var setLoading = s4[1];
+        var s2 = useState(''); var password = s2[0]; var setPassword = s2[1];
+        var s3 = useState(''); var error = s3[0]; var setError = s3[1];
 
-        useEffect(function() {
-          sb.auth.getSession().then(function(res) {
-            var session = res.data.session;
-            if (session && session.user && session.user.email === ADMIN_EMAIL) setUser(session.user);
-            setLoading(false);
-          });
-          var sub = sb.auth.onAuthStateChange(function(_, session) {
-            if (session && session.user && session.user.email === ADMIN_EMAIL) setUser(session.user);
-            else setUser(null);
-          });
-          return function() { sub.data.subscription.unsubscribe(); };
-        }, []);
 
         function handleLogin() {
-          sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: window.location.origin + '/admin' } }).then(function() { setSent(true); });
+          if (password === ADMIN_PASSWORD) {
+            setUser({ email: ADMIN_EMAIL });
+            setError('');
+          } else {
+            setError('Incorrect password');
+          }
         }
 
-        if (loading) return jsx('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'rgba(255,255,255,0.5)' }, children: 'Loading...' });
 
         if (!user) {
           return jsx('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' },
             children: jsx('div', { style: { background: '#1e293b', padding: '2rem', borderRadius: '12px', width: '360px', textAlign: 'center' },
               children: jsxs('div', { children: [
                 jsx('h1', { style: { fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e84393' }, children: 'StagePass Admin' }),
-                jsx('p', { style: { color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }, children: 'Sign in with your admin email' }),
-                sent
-                  ? jsx('p', { style: { color: '#4ade80' }, children: 'Check your email for the login link!' })
-                  : jsxs('div', { children: [
-                      jsx('input', { type: 'email', value: email, onChange: function(e) { setEmail(e.target.value); }, placeholder: 'admin@email.com', style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '1rem', fontSize: '1rem', outline: 'none' }, onKeyDown: function(e) { if (e.key === 'Enter') handleLogin(); } }),
-                      jsx('button', { onClick: handleLogin, style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#e84393', color: '#fff', fontSize: '1rem', cursor: 'pointer', fontWeight: 600 }, children: 'Send Magic Link' })
-                    ] })
+                jsx('p', { style: { color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }, children: 'Enter admin password' }),
+                error ? jsx('div', { style: { padding: '0.6rem', background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }, children: error }) : null,
+                jsx('input', { type: 'password', value: password, onChange: function(e) { setPassword(e.target.value); }, placeholder: 'Password', style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '1rem', fontSize: '1rem', outline: 'none' }, onKeyDown: function(e) { if (e.key === 'Enter') handleLogin(); } }),
+                jsx('button', { onClick: handleLogin, style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#e84393', color: '#fff', fontSize: '1rem', cursor: 'pointer', fontWeight: 600 }, children: 'Sign In' })
               ] })
             })
           });
         }
 
-        return jsx(AdminPanel, { user: user, onClose: function() { sb.auth.signOut(); setUser(null); } });
+
+        return jsx(AdminPanel, { user: user, onClose: function() { setUser(null); } });
       }
+
 
       ReactDOM.createRoot(document.getElementById('root')).render(jsx(App, {}));
     })
