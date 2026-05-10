@@ -1,27 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StagePass Admin Dashboard</title>
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.2.0",
-      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-      "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-      "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.3"
-    }
-  }
-  </script>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;color:#e0e0e0;line-height:1.5;}
-    #root{min-height:100vh;}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StagePass Admin Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; }
+</style>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/admin.js"></script>
+<div id="root"></div>
+<script>
+(function() {
+  var h = React.createElement;
+  var useState = React.useState;
+  var useEffect = React.useEffect;
+  var useCallback = React.useCallback;
+  var Fragment = React.Fragment;
+  var createClient = supabase.createClient;
+
+  function jsx(type, props, key) {
+    if (!props) props = {};
+    var children = props.children;
+    var rest = {};
+    for (var k in props) { if (k !== 'children') rest[k] = props[k]; }
+    if (key !== undefined) rest.key = key;
+    if (children === undefined) return h(type, rest);
+    if (Array.isArray(children)) return h.apply(null, [type, rest].concat(children));
+    return h(type, rest, children);
+  }
+  var jsxs = jsx;
+
+  document.getElementById('root').innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:rgba(255,255,255,0.5)">Loading admin...</div>';
+
+  fetch('/admin.js?v=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(code) {
+      code = code.replace(/^import\s+.+$/gm, '');
+      code = code.replace(/^export\s+function/gm, 'function');
+      code = code.replace(/createRoot\([^)]*\)\.render\([^)]*\);?/g, '');
+
+      var fn = new Function(
+        'React', 'useState', 'useEffect', 'useCallback',
+        'Fragment', 'jsx', 'jsxs', 'createClient',
+        code + '\nreturn { AdminPanel: AdminPanel, SUPABASE_URL: SUPABASE_URL, SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, ADMIN_EMAIL: ADMIN_EMAIL };'
+      );
+
+      var result = fn(React, useState, useEffect, useCallback, Fragment, jsx, jsxs, createClient);
+      var AdminPanel = result.AdminPanel;
+      var sb = createClient(result.SUPABASE_URL, result.SUPABASE_ANON_KEY);
+      var ADMIN_EMAIL = result.ADMIN_EMAIL;
+
+      function App() {
+        var s1 = useState(null); var user = s1[0]; var setUser = s1[1];
+        var s2 = useState(''); var email = s2[0]; var setEmail = s2[1];
+        var s3 = useState(false); var sent = s3[0]; var setSent = s3[1];
+        var s4 = useState(true); var loading = s4[0]; var setLoading = s4[1];
+
+        useEffect(function() {
+          sb.auth.getSession().then(function(res) {
+            var session = res.data.session;
+            if (session && session.user && session.user.email === ADMIN_EMAIL) setUser(session.user);
+            setLoading(false);
+          });
+          var sub = sb.auth.onAuthStateChange(function(_, session) {
+            if (session && session.user && session.user.email === ADMIN_EMAIL) setUser(session.user);
+            else setUser(null);
+          });
+          return function() { sub.data.subscription.unsubscribe(); };
+        }, []);
+
+        function handleLogin() {
+          sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: window.location.origin + '/admin' } }).then(function() { setSent(true); });
+        }
+
+        if (loading) return jsx('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'rgba(255,255,255,0.5)' }, children: 'Loading...' });
+
+        if (!user) {
+          return jsx('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' },
+            children: jsx('div', { style: { background: '#1e293b', padding: '2rem', borderRadius: '12px', width: '360px', textAlign: 'center' },
+              children: jsxs('div', { children: [
+                jsx('h1', { style: { fontSize: '1.5rem', marginBottom: '0.5rem', color: '#e84393' }, children: 'StagePass Admin' }),
+                jsx('p', { style: { color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }, children: 'Sign in with your admin email' }),
+                sent
+                  ? jsx('p', { style: { color: '#4ade80' }, children: 'Check your email for the login link!' })
+                  : jsxs('div', { children: [
+                      jsx('input', { type: 'email', value: email, onChange: function(e) { setEmail(e.target.value); }, placeholder: 'admin@email.com', style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: '#fff', marginBottom: '1rem', fontSize: '1rem', outline: 'none' }, onKeyDown: function(e) { if (e.key === 'Enter') handleLogin(); } }),
+                      jsx('button', { onClick: handleLogin, style: { width: '100%', padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#e84393', color: '#fff', fontSize: '1rem', cursor: 'pointer', fontWeight: 600 }, children: 'Send Magic Link' })
+                    ] })
+              ] })
+            })
+          });
+        }
+
+        return jsx(AdminPanel, { user: user, onClose: function() { sb.auth.signOut(); setUser(null); } });
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(jsx(App, {}));
+    })
+    .catch(function(err) {
+      document.getElementById('root').innerHTML = '<div style="color:red;padding:2rem">Error loading admin: ' + err.message + '</div>';
+    });
+})();
+</script>
 </body>
 </html>
