@@ -42,7 +42,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     .then(function(code) {
       code = code.replace(/^import\s+.+$/gm, '');
       code = code.replace(/^export\s+function/gm, 'function');
-      code = code.replace(/createRoot\([^)]*\)\.render\([^)]*\);?/g, '');
+      code = code.replace(/.*createRoot.*/g, '');
 
       var fn = new Function(
         'React', 'useState', 'useEffect', 'useCallback',
