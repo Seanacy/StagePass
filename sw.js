@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stagepass-v1';
+const CACHE_NAME = 'stagepass-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -39,6 +39,11 @@ self.addEventListener('fetch', (e) => {
     url.hostname.includes('fonts.googleapis') ||
     url.hostname.includes('fonts.gstatic')
   ) {
+    return;
+  }
+
+  // Always go to network for admin pages — never cache them
+  if (url.pathname.startsWith('/admin')) {
     return;
   }
 
