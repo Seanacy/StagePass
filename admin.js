@@ -1,18 +1,19 @@
-// admin.js â StagePass Admin Panel
+// admin.js Ã¢ÂÂ StagePass Admin Panel
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import { createRoot } from "react-dom/client";
 
 var SUPABASE_URL = "https://uxfvrlmszkhlxmiqolue.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4ZnZybG1zemtobHhtaXFvbHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMDUxNTcsImV4cCI6MjA5MzY4MTE1N30.fIfsCdy8bK6XuvR_OTksdRhuEP8HPRNX6nq7txw-Fms";
 var supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var ADMIN_EMAIL = "247ggtms@gmail.com";
 
-/* ââ helpers ââ */
-var fmt = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "â";
-var fmtTime = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "â";
+/* Ã¢ÂÂÃ¢ÂÂ helpers Ã¢ÂÂÃ¢ÂÂ */
+var fmt = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Ã¢ÂÂ";
+var fmtTime = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Ã¢ÂÂ";
 
-/* ââ Stat Card ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Stat Card Ã¢ÂÂÃ¢ÂÂ */
 function StatCard({ label, value, color }) {
   return jsx("div", {
     style: {
@@ -26,7 +27,7 @@ function StatCard({ label, value, color }) {
   });
 }
 
-/* ââ Overview Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Overview Tab Ã¢ÂÂÃ¢ÂÂ */
 function OverviewTab({ dancers, clubs, bookings }) {
   var pending = bookings.filter(b => b.status === "pending").length;
   var confirmed = bookings.filter(b => b.status === "confirmed").length;
@@ -54,8 +55,8 @@ function OverviewTab({ dancers, clubs, bookings }) {
             },
             children: jsxs(Fragment, { children: [
               jsxs("div", { children: [
-                jsx("div", { style: { fontWeight: 600, fontSize: "0.9rem", color: "#fff" }, children: "Dancer â Club" }),
-                jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }, children: fmt(b.start_date) + " â " + fmt(b.end_date) })
+                jsx("div", { style: { fontWeight: 600, fontSize: "0.9rem", color: "#fff" }, children: "Dancer Ã¢ÂÂ Club" }),
+                jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }, children: fmt(b.start_date) + " Ã¢ÂÂ " + fmt(b.end_date) })
               ]}),
               jsx("span", {
                 style: {
@@ -71,7 +72,7 @@ function OverviewTab({ dancers, clubs, bookings }) {
   ]});
 }
 
-/* ââ Dancers Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Dancers Tab Ã¢ÂÂÃ¢ÂÂ */
 function DancersTab({ dancers, onRefresh }) {
   var [search, setSearch] = useState("");
   var filtered = dancers.filter(d => {
@@ -129,7 +130,7 @@ function DancersTab({ dancers, onRefresh }) {
   ]});
 }
 
-/* ââ Clubs Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Clubs Tab Ã¢ÂÂÃ¢ÂÂ */
 function ClubsTab({ clubs, onRefresh }) {
   var [search, setSearch] = useState("");
   var [showAdd, setShowAdd] = useState(false);
@@ -220,7 +221,7 @@ function ClubsTab({ clubs, onRefresh }) {
           jsxs("div", { children: [
             jsx("div", { style: { fontWeight: 700, fontSize: "0.95rem", color: "#f9ca24" }, children: c.name }),
             jsx("div", { style: { fontSize: "0.8rem", color: "rgba(255,255,255,0.5)" }, children: c.city + ", " + c.state }),
-            c.type && jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }, children: c.type + (c.size ? " Â· " + c.size : "") }),
+            c.type && jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.35)" }, children: c.type + (c.size ? " ÃÂ· " + c.size : "") }),
             jsx("div", { style: { fontSize: "0.7rem", color: c.claimed_by ? "#00cec9" : "rgba(255,255,255,0.3)", marginTop: "0.25rem" }, children: c.claimed_by ? "Claimed" : "Unclaimed" })
           ]}),
           jsx("button", {
@@ -238,7 +239,7 @@ function ClubsTab({ clubs, onRefresh }) {
   ]});
 }
 
-/* ââ Bookings Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Bookings Tab Ã¢ÂÂÃ¢ÂÂ */
 function BookingsTab({ bookings, dancers, clubs, onRefresh }) {
   var [filter, setFilter] = useState("all");
   var filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
@@ -288,7 +289,7 @@ function BookingsTab({ bookings, dancers, clubs, onRefresh }) {
               jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }, children: [
                 jsxs("div", { children: [
                   jsx("div", { style: { fontWeight: 700, fontSize: "0.95rem", color: "#e84393" }, children: dancerMap[b.dancer_id] || "Unknown Dancer" }),
-                  jsxs("div", { style: { fontSize: "0.8rem", color: "#f9ca24" }, children: ["â ", clubMap[b.club_id] || "Unknown Club"] })
+                  jsxs("div", { style: { fontSize: "0.8rem", color: "#f9ca24" }, children: ["Ã¢ÂÂ ", clubMap[b.club_id] || "Unknown Club"] })
                 ]}),
                 jsx("span", {
                   style: { padding: "0.2rem 0.6rem", borderRadius: "999px", fontSize: "0.7rem", fontWeight: 700, background: sc.bg, color: sc.color },
@@ -296,8 +297,8 @@ function BookingsTab({ bookings, dancers, clubs, onRefresh }) {
                 })
               ]}),
               jsxs("div", { style: { fontSize: "0.8rem", color: "rgba(255,255,255,0.4)", marginBottom: "0.5rem" }, children: [
-                fmt(b.start_date), " â ", fmt(b.end_date),
-                b.preferred_shift ? " Â· " + b.preferred_shift : ""
+                fmt(b.start_date), " Ã¢ÂÂ ", fmt(b.end_date),
+                b.preferred_shift ? " ÃÂ· " + b.preferred_shift : ""
               ]}),
               b.message && jsx("div", { style: { fontSize: "0.8rem", color: "rgba(255,255,255,0.5)", fontStyle: "italic", marginBottom: "0.5rem" }, children: b.message }),
               b.status === "pending" && jsxs("div", { style: { display: "flex", gap: "0.5rem", marginTop: "0.25rem" }, children: [
@@ -319,7 +320,7 @@ function BookingsTab({ bookings, dancers, clubs, onRefresh }) {
   ]});
 }
 
-/* ââ Claim Codes Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Claim Codes Tab Ã¢ÂÂÃ¢ÂÂ */
 function ClaimCodesTab({ user, dancers, clubs }) {
   var [codes, setCodes] = useState([]);
   var [entityType, setEntityType] = useState("club");
@@ -409,7 +410,7 @@ function ClaimCodesTab({ user, dancers, clubs }) {
             children: jsxs(Fragment, { children: [
               jsxs("div", { children: [
                 jsx("div", { style: { fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", color: "#f9ca24", letterSpacing: "0.05em" }, children: c.code }),
-                jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }, children: c.entity_type + " Â· " + fmtTime(c.created_at) })
+                jsx("div", { style: { fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }, children: c.entity_type + " ÃÂ· " + fmtTime(c.created_at) })
               ]}),
               jsx("span", {
                 style: {
@@ -425,7 +426,7 @@ function ClaimCodesTab({ user, dancers, clubs }) {
   ]});
 }
 
-/* ââ Analytics Tab ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Analytics Tab Ã¢ÂÂÃ¢ÂÂ */
 function AnalyticsTab({ dancers, clubs, bookings }) {
   var claimedDancers = dancers.filter(d => d.claimed_by).length;
   var claimedClubs = clubs.filter(c => c.claimed_by).length;
@@ -494,9 +495,9 @@ function AnalyticsTab({ dancers, clubs, bookings }) {
   ]});
 }
 
-/* ââââââââââââââââââââââââââââââââââââââââââââââ
+/* Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
    Main Admin Panel
-   ââââââââââââââââââââââââââââââââââââââââââââââ */
+   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ */
 export function AdminPanel({ user, onClose }) {
   if (user?.email !== ADMIN_EMAIL) {
     return jsx("div", {
@@ -549,13 +550,13 @@ export function AdminPanel({ user, onClose }) {
         },
         children: jsxs(Fragment, { children: [
           jsxs("div", { style: { display: "flex", alignItems: "center", gap: "0.75rem" }, children: [
-            jsx("span", { style: { fontSize: "1.3rem" }, children: "â" }),
+            jsx("span", { style: { fontSize: "1.3rem" }, children: "Ã¢ÂÂ" }),
             jsx("h2", { style: { fontSize: "1.1rem", fontWeight: 800, background: "linear-gradient(90deg, #e84393, #f9ca24)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }, children: "StagePass Admin" })
           ]}),
           jsx("button", {
             onClick: onClose,
             style: { background: "rgba(255,255,255,0.08)", color: "#fff", border: "none", borderRadius: "0.5rem", padding: "0.4rem 0.85rem", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" },
-            children: "â Back"
+            children: "Ã¢ÂÂ Back"
           })
         ]})
       }),
@@ -593,3 +594,7 @@ export function AdminPanel({ user, onClose }) {
     ]})
   });
 }
+
+
+// Mount the app
+createRoot(document.getElementById("root")).render(jsx(App, {}));
