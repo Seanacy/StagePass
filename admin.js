@@ -596,5 +596,3 @@ export function AdminPanel({ user, onClose }) {
 }
 
 
-// Mount the app
-createRoot(document.getElementById("root")).render(jsx(App, {}));
